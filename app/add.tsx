@@ -40,7 +40,7 @@ const STATUS_MESSAGES: Record<ProcessingState, string> = {
 
 export default function AddPostcardScreen() {
   const insets = useSafeAreaInsets();
-  const { addPostcard, targetLanguage } = usePostcards();
+  const { addPostcard, targetLanguage, excludeAddress } = usePostcards();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -138,6 +138,7 @@ export default function AddPostcardScreen() {
         frontImageBase64: frontBase64,
         backImageBase64: backBase64,
         targetLanguage,
+        excludeAddress,
       });
 
       setProcessing("translating");

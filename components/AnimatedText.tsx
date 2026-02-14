@@ -15,14 +15,21 @@ interface AnimatedWordProps {
   index: number;
   currentWordIndex: number;
   isPlaying: boolean;
+  hasPlayed: boolean;
 }
 
-function AnimatedWord({ word, index, currentWordIndex, isPlaying }: AnimatedWordProps) {
+function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed }: AnimatedWordProps) {
   const progress = useSharedValue(0);
   const highlight = useSharedValue(0);
 
   useEffect(() => {
-    if (!isPlaying) {
+    if (hasPlayed && !isPlaying) {
+      progress.value = withTiming(1, { duration: 200 });
+      highlight.value = withTiming(0, { duration: 200 });
+      return;
+    }
+
+    if (!isPlaying && !hasPlayed) {
       progress.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.quad) });
       highlight.value = withTiming(0, { duration: 200 });
       return;
@@ -39,7 +46,7 @@ function AnimatedWord({ word, index, currentWordIndex, isPlaying }: AnimatedWord
     } else {
       highlight.value = withTiming(0, { duration: 250 });
     }
-  }, [currentWordIndex, isPlaying, index]);
+  }, [currentWordIndex, isPlaying, hasPlayed, index]);
 
   const animatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.4, 1]);
@@ -68,9 +75,10 @@ interface AnimatedTextProps {
   words: string[];
   currentWordIndex: number;
   isPlaying: boolean;
+  hasPlayed: boolean;
 }
 
-export default function AnimatedText({ words, currentWordIndex, isPlaying }: AnimatedTextProps) {
+export default function AnimatedText({ words, currentWordIndex, isPlaying, hasPlayed }: AnimatedTextProps) {
   return (
     <View style={styles.container}>
       {words.map((word, index) => (
@@ -80,6 +88,7 @@ export default function AnimatedText({ words, currentWordIndex, isPlaying }: Ani
           index={index}
           currentWordIndex={currentWordIndex}
           isPlaying={isPlaying}
+          hasPlayed={hasPlayed}
         />
       ))}
     </View>

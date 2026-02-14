@@ -33,8 +33,9 @@ export default function DetailScreen() {
 
   const postcard = postcards.find((p) => p.id === id);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasPlayed, setHasPlayed] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
-  const wordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
 
   const baseUrl = getApiUrl();
   const initialAudioUrl = postcard?.audioPath
@@ -46,45 +47,58 @@ export default function DetailScreen() {
   const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
 
-  const cleanup = useCallback(() => {
-    if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-    wordTimerRef.current = null;
-    setIsPlaying(false);
-    setCurrentWordIndex(-1);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (status.playing && !wordTimerRef.current && isPlaying) {
-      const words = postcard?.words || [];
-      if (words.length === 0) return;
-      const duration = audioDurationMs || Math.max((postcard?.translatedText?.length || 20) * 65, 2000);
-      const intervalMs = duration / words.length;
-      let wordIdx = 0;
-      setCurrentWordIndex(0);
-
-      wordTimerRef.current = setInterval(() => {
-        wordIdx++;
-        if (wordIdx >= words.length) {
-          if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-          wordTimerRef.current = null;
-          return;
-        }
-        setCurrentWordIndex(wordIdx);
-      }, intervalMs);
+  const stopSync = useCallback(() => {
+    if (syncFrameRef.current) {
+      cancelAnimationFrame(syncFrameRef.current);
+      syncFrameRef.current = null;
     }
-  }, [status.playing, isPlaying, audioDurationMs, postcard]);
+  }, []);
+
+  const finishPlayback = useCallback(() => {
+    stopSync();
+    setIsPlaying(false);
+    setHasPlayed(true);
+    const wordCount = postcard?.words?.length || 0;
+    if (wordCount > 0) setCurrentWordIndex(wordCount - 1);
+  }, [stopSync, postcard]);
+
+  const resetPlayback = useCallback(() => {
+    stopSync();
+    setIsPlaying(false);
+    setHasPlayed(false);
+    setCurrentWordIndex(-1);
+  }, [stopSync]);
+
+  useEffect(() => {
+    return () => stopSync();
+  }, [stopSync]);
+
+  useEffect(() => {
+    if (!isPlaying || !status.playing) return;
+    const words = postcard?.words || [];
+    if (words.length === 0) return;
+    const duration = audioDurationMs || Math.max((postcard?.translatedText?.length || 20) * 65, 2000);
+
+    const syncLoop = () => {
+      const currentMs = (player as any).currentTime * 1000;
+      const progress = Math.min(currentMs / duration, 1);
+      const wordIdx = Math.min(Math.floor(progress * words.length), words.length - 1);
+      setCurrentWordIndex(wordIdx);
+
+      if (progress < 1) {
+        syncFrameRef.current = requestAnimationFrame(syncLoop);
+      }
+    };
+    syncFrameRef.current = requestAnimationFrame(syncLoop);
+
+    return () => stopSync();
+  }, [status.playing, isPlaying, audioDurationMs, postcard, player, stopSync]);
 
   useEffect(() => {
     if (isPlaying && !status.playing && status.currentTime > 0) {
-      cleanup();
+      finishPlayback();
     }
-  }, [status.playing, status.currentTime, isPlaying, cleanup]);
+  }, [status.playing, status.currentTime, isPlaying, finishPlayback]);
 
   const { updatePostcard } = usePostcards();
 
@@ -93,12 +107,14 @@ export default function DetailScreen() {
 
     if (isPlaying) {
       player.pause();
-      cleanup();
+      finishPlayback();
       return;
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsPlaying(true);
+    setHasPlayed(false);
+    setCurrentWordIndex(-1);
 
     if (audioSource) {
       player.seekTo(0);
@@ -129,9 +145,9 @@ export default function DetailScreen() {
       }
     } catch (err) {
       console.error("Piper TTS error:", err);
-      cleanup();
+      resetPlayback();
     }
-  }, [postcard, isPlaying, player, cleanup, audioSource, baseUrl, updatePostcard]);
+  }, [postcard, isPlaying, player, finishPlayback, resetPlayback, audioSource, baseUrl, updatePostcard]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;
@@ -274,26 +290,41 @@ export default function DetailScreen() {
           <View style={styles.translatedSection}>
             <View style={styles.translatedHeader}>
               <Text style={styles.translatedLabel}>TRANSLATED MESSAGE</Text>
-              <Pressable
-                onPress={playAudio}
-                style={({ pressed }) => [
-                  styles.playBtn,
-                  isPlaying && styles.playBtnActive,
-                  pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
-                ]}
-              >
-                <Ionicons
-                  name={isPlaying ? "stop" : "play"}
-                  size={16}
-                  color={isPlaying ? "#FFFFFF" : Colors.light.accent}
-                />
-              </Pressable>
+              <View style={styles.playControls}>
+                {hasPlayed && !isPlaying && (
+                  <Pressable
+                    onPress={resetPlayback}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.replayBtn,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
+                    <Ionicons name="refresh" size={14} color={Colors.light.textMuted} />
+                  </Pressable>
+                )}
+                <Pressable
+                  onPress={playAudio}
+                  style={({ pressed }) => [
+                    styles.playBtn,
+                    isPlaying && styles.playBtnActive,
+                    pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
+                  ]}
+                >
+                  <Ionicons
+                    name={isPlaying ? "stop" : "play"}
+                    size={16}
+                    color={isPlaying ? "#FFFFFF" : Colors.light.accent}
+                  />
+                </Pressable>
+              </View>
             </View>
             <View style={styles.translatedTextContainer}>
               <AnimatedText
                 words={postcard.words}
                 currentWordIndex={currentWordIndex}
                 isPlaying={isPlaying}
+                hasPlayed={hasPlayed}
               />
             </View>
           </View>
@@ -467,6 +498,18 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: Colors.light.textMuted,
     letterSpacing: 1.2,
+  },
+  playControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  replayBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
   },
   playBtn: {
     width: 38,

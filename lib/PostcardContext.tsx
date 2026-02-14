@@ -5,7 +5,9 @@ interface PostcardContextValue {
   postcards: Postcard[];
   isLoading: boolean;
   targetLanguage: string;
+  excludeAddress: boolean;
   setTargetLanguage: (lang: string) => Promise<void>;
+  setExcludeAddress: (val: boolean) => Promise<void>;
   addPostcard: (postcard: Postcard) => Promise<void>;
   updatePostcard: (id: string, updates: Partial<Postcard>) => Promise<void>;
   removePostcard: (id: string) => Promise<void>;
@@ -18,6 +20,7 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
   const [postcards, setPostcards] = useState<Postcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [targetLanguage, setTargetLang] = useState("English");
+  const [excludeAddress, setExcludeAddr] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -25,6 +28,7 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
       const [cards, settings] = await Promise.all([getPostcards(), getSettings()]);
       setPostcards(cards);
       setTargetLang(settings.targetLanguage);
+      setExcludeAddr(settings.excludeAddress);
     } catch (err) {
       console.error("Failed to load data:", err);
     } finally {
@@ -56,18 +60,25 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
     await saveSettings({ targetLanguage: lang });
   }, []);
 
+  const setExcludeAddress = useCallback(async (val: boolean) => {
+    setExcludeAddr(val);
+    await saveSettings({ excludeAddress: val });
+  }, []);
+
   const value = useMemo(
     () => ({
       postcards,
       isLoading,
       targetLanguage,
+      excludeAddress,
       setTargetLanguage,
+      setExcludeAddress,
       addPostcard,
       updatePostcard,
       removePostcard,
       refresh: loadData,
     }),
-    [postcards, isLoading, targetLanguage, setTargetLanguage, addPostcard, updatePostcard, removePostcard, loadData]
+    [postcards, isLoading, targetLanguage, excludeAddress, setTargetLanguage, setExcludeAddress, addPostcard, updatePostcard, removePostcard, loadData]
   );
 
   return <PostcardContext.Provider value={value}>{children}</PostcardContext.Provider>;

@@ -92,13 +92,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/process-postcard", async (req: Request, res: Response) => {
     try {
-      const { frontImageBase64, backImageBase64, targetLanguage } = req.body;
+      const { frontImageBase64, backImageBase64, targetLanguage, excludeAddress } = req.body;
 
       if (!frontImageBase64 && !backImageBase64) {
         return res.status(400).json({ error: "At least one image is required" });
       }
 
       const lang = targetLanguage || "English";
+
+      const addressInstruction = excludeAddress
+        ? "\n5. IMPORTANT: Do NOT include any mailing addresses, postal addresses, recipient names/addresses, or sender addresses in the extracted text. Only extract the personal message content, greetings, and signatures. Skip any address blocks entirely."
+        : "";
 
       const parts: any[] = [];
 
@@ -109,7 +113,7 @@ Your task:
 1. Extract ALL handwritten or printed text visible on the postcard(s). Pay close attention to handwriting.
 2. Identify the language of the original text.
 3. Translate the extracted text into ${lang}.
-4. Provide a brief description of the postcard's visual content (the image/artwork on the front).
+4. Provide a brief description of the postcard's visual content (the image/artwork on the front).${addressInstruction}
 
 Respond in this exact JSON format only, no markdown wrapping:
 {

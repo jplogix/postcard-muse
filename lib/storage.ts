@@ -77,14 +77,21 @@ export async function deletePostcard(id: string): Promise<void> {
   await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(filtered));
 }
 
-export async function getSettings(): Promise<{ targetLanguage: string }> {
-  const data = await AsyncStorage.getItem(SETTINGS_KEY);
-  if (!data) return { targetLanguage: "English" };
-  return JSON.parse(data);
+export interface AppSettings {
+  targetLanguage: string;
+  excludeAddress: boolean;
 }
 
-export async function saveSettings(settings: { targetLanguage: string }): Promise<void> {
-  await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+export async function getSettings(): Promise<AppSettings> {
+  const data = await AsyncStorage.getItem(SETTINGS_KEY);
+  if (!data) return { targetLanguage: "English", excludeAddress: false };
+  const parsed = JSON.parse(data);
+  return { targetLanguage: parsed.targetLanguage || "English", excludeAddress: parsed.excludeAddress ?? false };
+}
+
+export async function saveSettings(settings: Partial<AppSettings>): Promise<void> {
+  const current = await getSettings();
+  await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }));
 }
 
 export async function imageToBase64(uri: string): Promise<string> {

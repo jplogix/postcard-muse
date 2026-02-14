@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   Platform,
+  Switch,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,7 +26,7 @@ const LANGUAGES = [
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { targetLanguage, setTargetLanguage, postcards } = usePostcards();
+  const { targetLanguage, setTargetLanguage, excludeAddress, setExcludeAddress, postcards } = usePostcards();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -94,6 +95,25 @@ export default function SettingsScreen() {
               </Pressable>
             );
           })}
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>PROCESSING OPTIONS</Text>
+        <View style={styles.optionRow}>
+          <View style={styles.optionInfo}>
+            <Text style={styles.optionLabel}>Exclude addresses</Text>
+            <Text style={styles.optionDesc}>
+              Skip mailing addresses when extracting postcard text
+            </Text>
+          </View>
+          <Switch
+            value={excludeAddress}
+            onValueChange={(val) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setExcludeAddress(val);
+            }}
+            trackColor={{ false: Colors.light.slate200, true: "rgba(79, 70, 229, 0.4)" }}
+            thumbColor={excludeAddress ? Colors.light.accent : "#FFFFFF"}
+          />
         </View>
 
         <View style={styles.aboutSection}>
@@ -198,6 +218,34 @@ const styles = StyleSheet.create({
   langChipTextSelected: {
     color: Colors.light.accent,
     fontFamily: "Inter_600SemiBold",
+  },
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: Colors.light.glassCard,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.glassBorderCard,
+    marginTop: 12,
+    marginBottom: 28,
+  },
+  optionInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  optionLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.text,
+    marginBottom: 2,
+  },
+  optionDesc: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
+    lineHeight: 17,
   },
   aboutSection: {
     padding: 20,
