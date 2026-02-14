@@ -111,8 +111,8 @@ export default function AddPostcardScreen() {
   }, [pickImage, takePhoto]);
 
   const processPostcard = useCallback(async () => {
-    if (!frontImage && !backImage) {
-      Alert.alert("Missing images", "Please add at least one image of your postcard.");
+    if (!backImage) {
+      Alert.alert("Missing image", "Please add the text side of your postcard.");
       return;
     }
 
@@ -184,7 +184,7 @@ export default function AddPostcardScreen() {
         <MeshGradientBackground />
         <View style={styles.processingContainer}>
           <ScanningAnimation
-            imageUri={frontImage || backImage || ""}
+            imageUri={backImage || frontImage || ""}
             statusText={STATUS_MESSAGES[processing]}
           />
           {processing === "done" && (
@@ -215,48 +215,19 @@ export default function AddPostcardScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionLabel}>FRONT</Text>
-        <Pressable
-          onPress={() => showImageOptions("front")}
-          style={({ pressed }) => [styles.imagePickerBox, pressed && { opacity: 0.85 }]}
-        >
-          {frontImage ? (
-            <Image source={{ uri: frontImage }} style={styles.previewImage} contentFit="cover" />
-          ) : (
-            <View style={styles.placeholderContent}>
-              <View style={styles.iconCircle}>
-                <Feather name="image" size={22} color={Colors.light.accent} />
-              </View>
-              <Text style={styles.placeholderText}>Add front image</Text>
-              <Text style={styles.placeholderSub}>Tap to take a photo or choose from gallery</Text>
-            </View>
-          )}
-          {frontImage && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                setFrontImage(null);
-              }}
-              style={styles.removeBtn}
-            >
-              <Ionicons name="close-circle" size={24} color={Colors.light.error} />
-            </Pressable>
-          )}
-        </Pressable>
-
-        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>BACK (optional)</Text>
+        <Text style={styles.sectionLabel}>TEXT SIDE</Text>
         <Pressable
           onPress={() => showImageOptions("back")}
-          style={({ pressed }) => [styles.imagePickerBox, styles.backBox, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.imagePickerBox, pressed && { opacity: 0.85 }]}
         >
           {backImage ? (
             <Image source={{ uri: backImage }} style={styles.previewImage} contentFit="cover" />
           ) : (
             <View style={styles.placeholderContent}>
               <View style={styles.iconCircle}>
-                <Feather name="mail" size={22} color={Colors.light.indigo} />
+                <Feather name="mail" size={22} color={Colors.light.accent} />
               </View>
-              <Text style={styles.placeholderText}>Add back image</Text>
+              <Text style={styles.placeholderText}>Add text side image</Text>
               <Text style={styles.placeholderSub}>The side with the handwritten message</Text>
             </View>
           )}
@@ -265,6 +236,35 @@ export default function AddPostcardScreen() {
               onPress={(e) => {
                 e.stopPropagation();
                 setBackImage(null);
+              }}
+              style={styles.removeBtn}
+            >
+              <Ionicons name="close-circle" size={24} color={Colors.light.error} />
+            </Pressable>
+          )}
+        </Pressable>
+
+        <Text style={[styles.sectionLabel, { marginTop: 24 }]}>PICTURE SIDE (optional)</Text>
+        <Pressable
+          onPress={() => showImageOptions("front")}
+          style={({ pressed }) => [styles.imagePickerBox, styles.backBox, pressed && { opacity: 0.85 }]}
+        >
+          {frontImage ? (
+            <Image source={{ uri: frontImage }} style={styles.previewImage} contentFit="cover" />
+          ) : (
+            <View style={styles.placeholderContent}>
+              <View style={styles.iconCircle}>
+                <Feather name="image" size={22} color={Colors.light.indigo} />
+              </View>
+              <Text style={styles.placeholderText}>Add picture side</Text>
+              <Text style={styles.placeholderSub}>The front image of the postcard</Text>
+            </View>
+          )}
+          {frontImage && (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                setFrontImage(null);
               }}
               style={styles.removeBtn}
             >
@@ -290,22 +290,22 @@ export default function AddPostcardScreen() {
       <View style={[styles.bottomBar, { paddingBottom: bottomInset + 16 }]}>
         <Pressable
           onPress={processPostcard}
-          disabled={!frontImage && !backImage}
+          disabled={!backImage}
           style={({ pressed }) => [
             styles.processBtn,
-            (!frontImage && !backImage) && styles.processBtnDisabled,
+            !backImage && styles.processBtnDisabled,
             pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
           ]}
         >
           <Ionicons
             name="sparkles"
             size={18}
-            color={frontImage || backImage ? "#FFFFFF" : Colors.light.textMuted}
+            color={backImage ? "#FFFFFF" : Colors.light.textMuted}
           />
           <Text
             style={[
               styles.processBtnText,
-              (!frontImage && !backImage) && { color: Colors.light.textMuted },
+              !backImage && { color: Colors.light.textMuted },
             ]}
           >
             Process with AI
