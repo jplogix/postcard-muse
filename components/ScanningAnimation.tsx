@@ -261,11 +261,9 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
     panX.value = withRepeat(
       withSequence(
-        withTiming(-PAN_RANGE_X, { duration: 2800, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(PAN_RANGE_X * 0.6, { duration: 2400, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(-PAN_RANGE_X * 0.3, { duration: 2000, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(PAN_RANGE_X, { duration: 2600, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(0, { duration: 2200, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(-PAN_RANGE_X * 0.6, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(PAN_RANGE_X * 0.5, { duration: 4000, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(0, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
       ),
       -1,
       false
@@ -273,11 +271,9 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
     panY.value = withRepeat(
       withSequence(
-        withTiming(-PAN_RANGE_Y, { duration: 2400, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(PAN_RANGE_Y, { duration: 3000, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(-PAN_RANGE_Y * 0.5, { duration: 2200, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(PAN_RANGE_Y * 0.7, { duration: 2600, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(-PAN_RANGE_Y * 0.5, { duration: 4000, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(PAN_RANGE_Y * 0.5, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(0, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
       ),
       -1,
       false
