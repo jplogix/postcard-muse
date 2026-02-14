@@ -11,8 +11,8 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_WIDTH = SCREEN_WIDTH - 48;
-const CARD_HEIGHT = CARD_WIDTH * 0.65;
+const CARD_WIDTH = Math.min(SCREEN_WIDTH - 80, 280);
+const CARD_HEIGHT = CARD_WIDTH * 0.625;
 
 interface FlipCardProps {
   front: React.ReactNode;
