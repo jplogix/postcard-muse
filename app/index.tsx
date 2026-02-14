@@ -2,6 +2,7 @@ import React from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   FlatList,
   Pressable,
@@ -54,7 +55,7 @@ export default function GalleryScreen() {
         <BlurView intensity={60} tint="light" style={styles.headerBlur}>
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              <Ionicons name="mail-outline" size={22} color={Colors.light.text} />
+              <Image source={require("@/assets/images/postcard-header-icon.png")} style={{ width: 24, height: 18 }} />
               <Text style={styles.brandText}>Postcard Muse</Text>
             </View>
             <Pressable onPress={handleSettings} hitSlop={12} style={styles.headerIconBtn} testID="settings-button">
