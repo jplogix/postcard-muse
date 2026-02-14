@@ -111,8 +111,9 @@ export default function SettingsScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setExcludeAddress(val);
             }}
-            trackColor={{ false: Colors.light.slate200, true: "rgba(79, 70, 229, 0.4)" }}
-            thumbColor={excludeAddress ? Colors.light.accent : "#FFFFFF"}
+            trackColor={{ false: Colors.light.slate200, true: Colors.light.accent }}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor={Colors.light.slate200}
           />
         </View>
 
