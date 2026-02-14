@@ -21,6 +21,7 @@ import { usePostcards } from "@/lib/PostcardContext";
 import { saveImagePermanently, imageToBase64, Postcard } from "@/lib/storage";
 import { apiRequest } from "@/lib/query-client";
 import ScanningAnimation from "@/components/ScanningAnimation";
+import LoadingJokes from "@/components/LoadingJokes";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -203,6 +204,7 @@ export default function AddPostcardScreen() {
             imageUri={backImage || frontImage || ""}
             statusText={STATUS_MESSAGES[processing]}
           />
+          <LoadingJokes isVisible={processing !== "done"} />
           {processing === "done" && (
             <View style={styles.doneContainer}>
               <View style={styles.checkCircle}>
