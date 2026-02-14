@@ -54,7 +54,7 @@ export default function GalleryScreen() {
         <BlurView intensity={60} tint="light" style={styles.headerBlur}>
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              <Ionicons name="heart-outline" size={22} color={Colors.light.text} />
+              <Ionicons name="mail-outline" size={22} color={Colors.light.text} />
               <Text style={styles.brandText}>Postcard Muse</Text>
             </View>
             <Pressable onPress={handleSettings} hitSlop={12} style={styles.headerIconBtn} testID="settings-button">
