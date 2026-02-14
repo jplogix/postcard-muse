@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
   },
   imagePickerBox: {
     width: "100%",
-    height: 200,
+    aspectRatio: 16 / 10,
     borderRadius: 20,
     overflow: "hidden",
     backgroundColor: Colors.light.glassCard,
@@ -355,9 +355,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.glassBorderCard,
     borderStyle: "dashed",
   },
-  backBox: {
-    height: 180,
-  },
+  backBox: {},
   previewImage: {
     width: "100%",
     height: "100%",
