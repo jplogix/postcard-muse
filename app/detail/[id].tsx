@@ -8,15 +8,18 @@ import {
   Platform,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
+import { getApiUrl } from "@/lib/query-client";
 import FlipCard, { CARD_WIDTH, CARD_HEIGHT } from "@/components/FlipCard";
 import AnimatedText from "@/components/AnimatedText";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
@@ -32,66 +35,128 @@ export default function DetailScreen() {
 
   const postcard = postcards.find((p) => p.id === id);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const wordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (wordTimerRef.current) clearInterval(wordTimerRef.current);
+    wordTimerRef.current = null;
+    setIsPlaying(false);
+    setCurrentWordIndex(-1);
+  }, []);
 
   useEffect(() => {
     return () => {
       Speech.stop();
       if (wordTimerRef.current) clearInterval(wordTimerRef.current);
+      soundRef.current?.unloadAsync().catch(() => {});
     };
   }, []);
 
-  const playAudio = useCallback(() => {
-    if (!postcard?.translatedText || !postcard.words?.length) return;
-
-    if (isPlaying) {
-      Speech.stop();
-      setIsPlaying(false);
-      setCurrentWordIndex(-1);
-      if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-      return;
-    }
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsPlaying(true);
+  const startWordTimer = useCallback((words: string[], durationMs: number) => {
+    if (wordTimerRef.current) clearInterval(wordTimerRef.current);
+    const intervalMs = durationMs / words.length;
+    let wordIdx = 0;
     setCurrentWordIndex(0);
 
-    const words = postcard.words;
-    const totalChars = postcard.translatedText.length;
-    const estimatedDurationMs = Math.max(totalChars * 65, 2000);
-    const intervalMs = estimatedDurationMs / words.length;
-
-    let wordIdx = 0;
     wordTimerRef.current = setInterval(() => {
       wordIdx++;
       if (wordIdx >= words.length) {
         if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-        setTimeout(() => {
-          setIsPlaying(false);
-          setCurrentWordIndex(-1);
-        }, 500);
         return;
       }
       setCurrentWordIndex(wordIdx);
     }, intervalMs);
+  }, []);
+
+  const playWithGemini = useCallback(async (): Promise<boolean> => {
+    if (!postcard?.translatedText) return false;
+    try {
+      const baseUrl = getApiUrl();
+      const url = new URL("/api/tts", baseUrl);
+
+      const response = await globalThis.fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: postcard.translatedText, voice: "Aoede" }),
+      });
+
+      if (!response.ok) return false;
+
+      const durationMs = parseInt(response.headers.get("X-Audio-Duration-Ms") || "0", 10);
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+      );
+
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:audio/wav;base64,${base64}` },
+        { shouldPlay: true }
+      );
+      soundRef.current = sound;
+
+      const words = postcard.words || [];
+      const audioDuration = durationMs || Math.max(postcard.translatedText.length * 65, 2000);
+      startWordTimer(words, audioDuration);
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          cleanup();
+          sound.unloadAsync().catch(() => {});
+          soundRef.current = null;
+        }
+      });
+
+      return true;
+    } catch (err) {
+      console.log("Gemini TTS unavailable, falling back to device speech");
+      return false;
+    }
+  }, [postcard, startWordTimer, cleanup]);
+
+  const playWithDeviceSpeech = useCallback(() => {
+    if (!postcard?.translatedText || !postcard.words?.length) return;
+    const words = postcard.words;
+    const totalChars = postcard.translatedText.length;
+    const estimatedDurationMs = Math.max(totalChars * 65, 2000);
+    startWordTimer(words, estimatedDurationMs);
 
     Speech.speak(postcard.translatedText, {
       language: postcard.targetLanguage === "English" ? "en" : undefined,
       rate: 0.85,
       pitch: 1.0,
-      onDone: () => {
-        if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-        setIsPlaying(false);
-        setCurrentWordIndex(-1);
-      },
-      onError: () => {
-        if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-        setIsPlaying(false);
-        setCurrentWordIndex(-1);
-      },
+      onDone: cleanup,
+      onError: cleanup,
     });
-  }, [postcard, isPlaying]);
+  }, [postcard, startWordTimer, cleanup]);
+
+  const playAudio = useCallback(async () => {
+    if (!postcard?.translatedText || !postcard.words?.length) return;
+
+    if (isPlaying) {
+      Speech.stop();
+      if (soundRef.current) {
+        await soundRef.current.stopAsync().catch(() => {});
+        await soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+      cleanup();
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsPlaying(true);
+    setIsLoadingAudio(true);
+
+    const geminiSuccess = await playWithGemini();
+    setIsLoadingAudio(false);
+    if (!geminiSuccess) {
+      playWithDeviceSpeech();
+    }
+  }, [postcard, isPlaying, playWithGemini, playWithDeviceSpeech, cleanup]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;
@@ -236,17 +301,22 @@ export default function DetailScreen() {
               <Text style={styles.translatedLabel}>TRANSLATED MESSAGE</Text>
               <Pressable
                 onPress={playAudio}
+                disabled={isLoadingAudio}
                 style={({ pressed }) => [
                   styles.playBtn,
-                  isPlaying && styles.playBtnActive,
+                  (isPlaying || isLoadingAudio) && styles.playBtnActive,
                   pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
                 ]}
               >
-                <Ionicons
-                  name={isPlaying ? "stop" : "play"}
-                  size={16}
-                  color={isPlaying ? "#FFFFFF" : Colors.light.accent}
-                />
+                {isLoadingAudio ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons
+                    name={isPlaying ? "stop" : "play"}
+                    size={16}
+                    color={isPlaying ? "#FFFFFF" : Colors.light.accent}
+                  />
+                )}
               </Pressable>
             </View>
             <View style={styles.translatedTextContainer}>
