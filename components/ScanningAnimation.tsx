@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { View, StyleSheet, Dimensions, Image } from "react-native";
 import Animated, {
   useSharedValue,
@@ -18,6 +18,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
 const NUM_STATIC_PARTICLES = 60;
+const IMAGE_SCALE = 1.35;
+const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
+const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
 
 const PARTICLE_COLORS = [
   Colors.light.particleIndigo,
@@ -134,9 +137,10 @@ interface ScanningAnimationProps {
 
 export default function ScanningAnimation({ imageUri, statusText }: ScanningAnimationProps) {
   const scanLineY = useSharedValue(0);
-  const pulseScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.3);
   const textOpacity = useSharedValue(0);
+  const panX = useSharedValue(0);
+  const panY = useSharedValue(0);
 
   const particleConfigs = useMemo(() => generateParticleConfigs(NUM_STATIC_PARTICLES), []);
 
@@ -147,10 +151,25 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
       true
     );
 
-    pulseScale.value = withRepeat(
+    panX.value = withRepeat(
       withSequence(
-        withTiming(1.03, { duration: 1500, easing: Easing.inOut(Easing.quad) }),
-        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.quad) })
+        withTiming(-PAN_RANGE_X, { duration: 2800, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(PAN_RANGE_X * 0.6, { duration: 2400, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(-PAN_RANGE_X * 0.3, { duration: 2000, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(PAN_RANGE_X, { duration: 2600, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(0, { duration: 2200, easing: Easing.inOut(Easing.cubic) }),
+      ),
+      -1,
+      false
+    );
+
+    panY.value = withRepeat(
+      withSequence(
+        withTiming(-PAN_RANGE_Y, { duration: 2400, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(PAN_RANGE_Y, { duration: 3000, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(-PAN_RANGE_Y * 0.5, { duration: 2200, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(PAN_RANGE_Y * 0.7, { duration: 2600, easing: Easing.inOut(Easing.cubic) }),
+        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.cubic) }),
       ),
       -1,
       false
@@ -176,14 +195,19 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
     return () => {
       cancelAnimation(scanLineY);
-      cancelAnimation(pulseScale);
+      cancelAnimation(panX);
+      cancelAnimation(panY);
       cancelAnimation(glowOpacity);
       cancelAnimation(textOpacity);
     };
   }, []);
 
-  const cardAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseScale.value }],
+  const imageStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: IMAGE_SCALE },
+      { translateX: panX.value },
+      { translateY: panY.value },
+    ],
   }));
 
   const scanLineStyle = useAnimatedStyle(() => ({
@@ -210,8 +234,12 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
         />
       </Animated.View>
 
-      <Animated.View style={[styles.cardContainer, cardAnimatedStyle]}>
-        <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="cover" />
+      <View style={styles.cardContainer}>
+        <Animated.Image
+          source={{ uri: imageUri }}
+          style={[styles.cardImage, imageStyle]}
+          resizeMode="cover"
+        />
 
         <View style={styles.particlesContainer}>
           {particleConfigs.map((config, i) => (
@@ -239,7 +267,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
         <View style={styles.cornerTR} />
         <View style={styles.cornerBL} />
         <View style={styles.cornerBR} />
-      </Animated.View>
+      </View>
 
       <Animated.Text style={[styles.statusText, textStyle]}>
         {statusText}
