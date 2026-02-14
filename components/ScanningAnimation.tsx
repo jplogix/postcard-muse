@@ -18,11 +18,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
 const NUM_TEXT_BLOCKS = 6;
-const NUM_SONAR_RINGS = 3;
 const IMAGE_SCALE = 1.35;
 const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
 const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
-const SONAR_MAX = Math.max(CARD_WIDTH, CARD_HEIGHT) * 0.9;
 
 const BLOCK_COLORS = [
   "rgba(99, 102, 241, 0.5)",
@@ -134,56 +132,6 @@ function TextBlockOutline({ config }: { config: TextBlockConfig }) {
   );
 }
 
-function SonarRing({ index }: { index: number }) {
-  const progress = useSharedValue(0);
-  const delay = index * 1200;
-  const duration = NUM_SONAR_RINGS * 1200;
-
-  useEffect(() => {
-    progress.value = withDelay(
-      delay,
-      withRepeat(
-        withTiming(1, { duration, easing: Easing.out(Easing.quad) }),
-        -1,
-        false
-      )
-    );
-
-    return () => cancelAnimation(progress);
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    const size = interpolate(progress.value, [0, 1], [0, SONAR_MAX]);
-    const opacity = interpolate(progress.value, [0, 0.15, 0.6, 1], [0, 0.35, 0.12, 0]);
-
-    return {
-      width: size,
-      height: size,
-      borderRadius: size / 2,
-      opacity,
-      transform: [
-        { translateX: -size / 2 },
-        { translateY: -size / 2 },
-      ],
-    };
-  });
-
-  return (
-    <Animated.View
-      style={[
-        {
-          position: "absolute",
-          left: CARD_WIDTH / 2,
-          top: CARD_HEIGHT / 2,
-          borderWidth: 1.5,
-          borderColor: "rgba(99, 102, 241, 0.5)",
-        },
-        animatedStyle,
-      ]}
-    />
-  );
-}
-
 interface ScanningAnimationProps {
   imageUri: string;
   statusText: string;
@@ -196,9 +144,9 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const panX = useSharedValue(0);
   const panY = useSharedValue(0);
   const glitchOpacity = useSharedValue(0);
+  const contrastOpacity = useSharedValue(0);
 
   const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
-  const sonarIndices = useMemo(() => Array.from({ length: NUM_SONAR_RINGS }, (_, i) => i), []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
@@ -247,15 +195,49 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
     glitchOpacity.value = withRepeat(
       withSequence(
-        withTiming(0, { duration: 3200 }),
-        withTiming(0.55, { duration: 80 }),
-        withTiming(0, { duration: 120 }),
-        withTiming(0.4, { duration: 60 }),
+        withTiming(0, { duration: 2000 }),
+        withTiming(0.6, { duration: 60 }),
+        withTiming(0.15, { duration: 80 }),
+        withTiming(0.7, { duration: 50 }),
         withTiming(0, { duration: 100 }),
-        withTiming(0, { duration: 4500 }),
+        withTiming(0, { duration: 1400 }),
         withTiming(0.5, { duration: 70 }),
-        withTiming(0, { duration: 150 }),
-        withTiming(0, { duration: 2800 }),
+        withTiming(0.2, { duration: 60 }),
+        withTiming(0.65, { duration: 50 }),
+        withTiming(0, { duration: 120 }),
+        withTiming(0, { duration: 2200 }),
+        withTiming(0.55, { duration: 55 }),
+        withTiming(0, { duration: 90 }),
+        withTiming(0.45, { duration: 65 }),
+        withTiming(0.1, { duration: 50 }),
+        withTiming(0.6, { duration: 40 }),
+        withTiming(0, { duration: 110 }),
+        withTiming(0, { duration: 1800 }),
+      ),
+      -1,
+      false
+    );
+
+    contrastOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 2000 }),
+        withTiming(0.25, { duration: 60 }),
+        withTiming(0.08, { duration: 80 }),
+        withTiming(0.3, { duration: 50 }),
+        withTiming(0, { duration: 100 }),
+        withTiming(0, { duration: 1400 }),
+        withTiming(0.2, { duration: 70 }),
+        withTiming(0.1, { duration: 60 }),
+        withTiming(0.28, { duration: 50 }),
+        withTiming(0, { duration: 120 }),
+        withTiming(0, { duration: 2200 }),
+        withTiming(0.22, { duration: 55 }),
+        withTiming(0, { duration: 90 }),
+        withTiming(0.18, { duration: 65 }),
+        withTiming(0.05, { duration: 50 }),
+        withTiming(0.25, { duration: 40 }),
+        withTiming(0, { duration: 110 }),
+        withTiming(0, { duration: 1800 }),
       ),
       -1,
       false
@@ -268,6 +250,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
       cancelAnimation(glowOpacity);
       cancelAnimation(textOpacity);
       cancelAnimation(glitchOpacity);
+      cancelAnimation(contrastOpacity);
     };
   }, []);
 
@@ -296,6 +279,10 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
     opacity: glitchOpacity.value,
   }));
 
+  const contrastStyle = useAnimatedStyle(() => ({
+    opacity: contrastOpacity.value,
+  }));
+
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.glowRing, glowStyle]}>
@@ -315,13 +302,12 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
         />
 
         <View style={styles.overlayContainer}>
-          {sonarIndices.map((i) => (
-            <SonarRing key={`s${i}`} index={i} />
-          ))}
           {textBlockConfigs.map((config, i) => (
             <TextBlockOutline key={`tb${i}`} config={config} />
           ))}
         </View>
+
+        <Animated.View style={[styles.contrastOverlay, contrastStyle]} pointerEvents="none" />
 
         <Animated.View style={[styles.scanLine, scanLineStyle]}>
           <LinearGradient
@@ -388,6 +374,10 @@ const styles = StyleSheet.create({
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
   },
+  contrastOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
   scanLine: {
     position: "absolute",
     left: 0,
@@ -403,7 +393,7 @@ const styles = StyleSheet.create({
   },
   glitchOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(99, 102, 241, 0.35)",
+    backgroundColor: "rgba(99, 102, 241, 0.4)",
     mixBlendMode: "difference" as any,
   },
   cornerTL: { ...CORNER, top: 8, left: 8, borderTopWidth: 2, borderLeftWidth: 2 },
