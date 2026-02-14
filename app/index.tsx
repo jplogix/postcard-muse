@@ -97,9 +97,9 @@ export default function GalleryScreen() {
           pressed && { transform: [{ scale: 0.92 }], opacity: 0.9 },
         ]}
       >
-        <View style={styles.fabInner}>
-          <Ionicons name="scan" size={24} color="#FFFFFF" />
-        </View>
+        <BlurView intensity={50} tint="light" style={styles.fabBlur}>
+          <Ionicons name="scan" size={24} color={Colors.light.accent} />
+        </BlurView>
       </Pressable>
     </View>
   );
@@ -188,18 +188,25 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 24,
-    shadowColor: Colors.light.slate900,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  fabInner: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.light.slate900,
+    overflow: "hidden",
+    shadowColor: Colors.light.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabBlur: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.5)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
   },
 });
