@@ -15,7 +15,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
@@ -40,7 +39,6 @@ export default function DetailScreen() {
   const [audioSource, setAudioSource] = useState<string | null>(null);
   const [audioDurationMs, setAudioDurationMs] = useState(0);
   const wordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const usingGeminiRef = useRef(false);
 
   const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
@@ -50,18 +48,16 @@ export default function DetailScreen() {
     wordTimerRef.current = null;
     setIsPlaying(false);
     setCurrentWordIndex(-1);
-    usingGeminiRef.current = false;
   }, []);
 
   useEffect(() => {
     return () => {
-      Speech.stop();
       if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     };
   }, []);
 
   useEffect(() => {
-    if (status.playing && !wordTimerRef.current && isPlaying && usingGeminiRef.current) {
+    if (status.playing && !wordTimerRef.current && isPlaying) {
       const words = postcard?.words || [];
       if (words.length === 0) return;
       const duration = audioDurationMs || Math.max((postcard?.translatedText?.length || 20) * 65, 2000);
@@ -82,36 +78,16 @@ export default function DetailScreen() {
   }, [status.playing, isPlaying, audioDurationMs, postcard]);
 
   useEffect(() => {
-    if (usingGeminiRef.current && isPlaying && !status.playing && status.currentTime > 0) {
+    if (isPlaying && !status.playing && status.currentTime > 0) {
       cleanup();
     }
   }, [status.playing, status.currentTime, isPlaying, cleanup]);
-
-  const startWordTimerForSpeech = useCallback((words: string[], durationMs: number) => {
-    if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-    const intervalMs = durationMs / words.length;
-    let wordIdx = 0;
-    setCurrentWordIndex(0);
-
-    wordTimerRef.current = setInterval(() => {
-      wordIdx++;
-      if (wordIdx >= words.length) {
-        if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-        wordTimerRef.current = null;
-        return;
-      }
-      setCurrentWordIndex(wordIdx);
-    }, intervalMs);
-  }, []);
 
   const playAudio = useCallback(async () => {
     if (!postcard?.translatedText || !postcard.words?.length) return;
 
     if (isPlaying) {
-      Speech.stop();
-      if (usingGeminiRef.current) {
-        player.pause();
-      }
+      player.pause();
       cleanup();
       return;
     }
@@ -129,37 +105,24 @@ export default function DetailScreen() {
         body: JSON.stringify({ text: postcard.translatedText }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const fullAudioUrl = new URL(data.audioUrl, baseUrl).toString();
-        setAudioDurationMs(data.durationMs);
-        usingGeminiRef.current = true;
-        setAudioSource(fullAudioUrl);
-        setIsLoadingAudio(false);
+      if (!response.ok) throw new Error("TTS request failed");
 
-        setTimeout(() => {
-          player.seekTo(0);
-          player.play();
-        }, 300);
-        return;
-      }
+      const data = await response.json();
+      const fullAudioUrl = new URL(data.audioUrl, baseUrl).toString();
+      setAudioDurationMs(data.durationMs);
+      setAudioSource(fullAudioUrl);
+      setIsLoadingAudio(false);
+
+      setTimeout(() => {
+        player.seekTo(0);
+        player.play();
+      }, 300);
     } catch (err) {
-      console.log("Piper TTS unavailable, falling back to device speech");
+      console.error("Piper TTS error:", err);
+      setIsLoadingAudio(false);
+      cleanup();
     }
-
-    setIsLoadingAudio(false);
-    const words = postcard.words;
-    const estimatedDurationMs = Math.max(postcard.translatedText.length * 65, 2000);
-    startWordTimerForSpeech(words, estimatedDurationMs);
-
-    Speech.speak(postcard.translatedText, {
-      language: postcard.targetLanguage === "English" ? "en" : undefined,
-      rate: 0.85,
-      pitch: 1.0,
-      onDone: cleanup,
-      onError: cleanup,
-    });
-  }, [postcard, isPlaying, player, cleanup, startWordTimerForSpeech]);
+  }, [postcard, isPlaying, player, cleanup]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;

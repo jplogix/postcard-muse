@@ -34,7 +34,7 @@ User wants handwritten text animation and audio to be in sync as much as possibl
 - **UI**: expo-image, expo-linear-gradient, expo-blur for light glassmorphism. React Native Reanimated for 3D flip and particle animations. expo-haptics for tactile feedback
 - **Fonts**: Inter (UI text: 300Light, 400Regular, 500Medium, 600SemiBold), Caveat (handwriting: 400Regular, 500Medium) via expo-font
 - **Background**: MeshGradientBackground component with three animated blobs (blobPurple, blobIndigo, blobPink)
-- **TTS**: expo-audio for Piper TTS audio playback, expo-speech as fallback. Word-level timing estimation for synchronized text animation
+- **TTS**: expo-audio for Piper TTS audio playback. Word-level timing estimation for synchronized text animation
 - **Scanning Animation**: Custom particle system with 24 animated particles (indigo, purple, pink, cyan) using Reanimated shared values
 
 ### Backend (Express Server)
