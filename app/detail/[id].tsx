@@ -12,9 +12,16 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Haptics from "expo-haptics";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import { getApiUrl } from "@/lib/query-client";
@@ -44,6 +51,10 @@ export default function DetailScreen() {
   const [audioSource, setAudioSource] = useState<string | null>(initialAudioUrl);
   const [audioDurationMs, setAudioDurationMs] = useState(postcard?.audioDurationMs || 0);
   const wordTimingsRef = useRef<number[] | null>(null);
+  const replayOverlayOpacity = useSharedValue(0);
+  const replayOverlayStyle = useAnimatedStyle(() => ({
+    opacity: replayOverlayOpacity.value,
+  }));
 
   const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
@@ -61,14 +72,16 @@ export default function DetailScreen() {
     setHasPlayed(true);
     const wordCount = postcard?.words?.length || 0;
     if (wordCount > 0) setCurrentWordIndex(wordCount - 1);
-  }, [stopSync, postcard]);
+    replayOverlayOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) });
+  }, [stopSync, postcard, replayOverlayOpacity]);
 
   const resetPlayback = useCallback(() => {
     stopSync();
     setIsPlaying(false);
     setHasPlayed(false);
     setCurrentWordIndex(-1);
-  }, [stopSync]);
+    replayOverlayOpacity.value = withTiming(0, { duration: 250 });
+  }, [stopSync, replayOverlayOpacity]);
 
   useEffect(() => {
     return () => stopSync();
@@ -136,6 +149,7 @@ export default function DetailScreen() {
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    replayOverlayOpacity.value = withTiming(0, { duration: 250 });
     setIsPlaying(true);
     setHasPlayed(false);
     setCurrentWordIndex(-1);
@@ -317,19 +331,7 @@ export default function DetailScreen() {
           <View style={styles.translatedSection}>
             <View style={styles.translatedHeader}>
               <Text style={styles.translatedLabel}>TRANSLATED MESSAGE</Text>
-              <View style={styles.playControls}>
-                {hasPlayed && !isPlaying && (
-                  <Pressable
-                    onPress={resetPlayback}
-                    hitSlop={8}
-                    style={({ pressed }) => [
-                      styles.replayBtn,
-                      pressed && { opacity: 0.7 },
-                    ]}
-                  >
-                    <Ionicons name="refresh" size={14} color={Colors.light.textMuted} />
-                  </Pressable>
-                )}
+              {!hasPlayed || isPlaying ? (
                 <Pressable
                   onPress={playAudio}
                   style={({ pressed }) => [
@@ -344,7 +346,7 @@ export default function DetailScreen() {
                     color={isPlaying ? "#FFFFFF" : Colors.light.accent}
                   />
                 </Pressable>
-              </View>
+              ) : null}
             </View>
             <View style={styles.translatedTextContainer}>
               <AnimatedText
@@ -354,6 +356,26 @@ export default function DetailScreen() {
                 hasPlayed={hasPlayed}
                 wordTimings={wordTimingsRef.current}
               />
+              <Animated.View
+                style={[styles.replayOverlay, replayOverlayStyle]}
+                pointerEvents={hasPlayed && !isPlaying ? "auto" : "none"}
+              >
+                <LinearGradient
+                  colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.7)", "rgba(255,255,255,0.95)"]}
+                  locations={[0, 0.4, 1]}
+                  style={StyleSheet.absoluteFill}
+                />
+                <Pressable
+                  onPress={playAudio}
+                  style={({ pressed }) => [
+                    styles.replayOverlayBtn,
+                    pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
+                  ]}
+                >
+                  <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                  <Text style={styles.replayOverlayText}>Replay</Text>
+                </Pressable>
+              </Animated.View>
             </View>
           </View>
         ) : null}
@@ -527,17 +549,33 @@ const styles = StyleSheet.create({
     color: Colors.light.textMuted,
     letterSpacing: 1.2,
   },
-  playControls: {
+  replayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 18,
+  },
+  replayOverlayBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
+    backgroundColor: Colors.light.accent,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: Colors.light.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  replayBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
+  replayOverlayText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
   },
   playBtn: {
     width: 38,
@@ -560,6 +598,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.glassBorderCard,
     minHeight: 80,
+    overflow: "hidden",
   },
   originalSection: {
     marginHorizontal: 24,
