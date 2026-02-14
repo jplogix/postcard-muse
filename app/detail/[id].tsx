@@ -42,6 +42,7 @@ export default function DetailScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
+  const [isMuted, setIsMuted] = useState(false);
   const syncFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
 
   const baseUrl = getApiUrl();
@@ -72,7 +73,7 @@ export default function DetailScreen() {
     setHasPlayed(true);
     const wordCount = postcard?.words?.length || 0;
     if (wordCount > 0) setCurrentWordIndex(wordCount - 1);
-    replayOverlayOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.quad) });
+    replayOverlayOpacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.quad) });
   }, [stopSync, postcard, replayOverlayOpacity]);
 
   const resetPlayback = useCallback(() => {
@@ -139,6 +140,12 @@ export default function DetailScreen() {
 
   const { updatePostcard } = usePostcards();
 
+  const toggleMute = useCallback(() => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    player.volume = newMuted ? 0 : 1;
+  }, [isMuted, player]);
+
   const playAudio = useCallback(async () => {
     if (!postcard?.translatedText || !postcard.words?.length) return;
 
@@ -149,10 +156,12 @@ export default function DetailScreen() {
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    replayOverlayOpacity.value = withTiming(0, { duration: 250 });
+    replayOverlayOpacity.value = withTiming(0, { duration: 200 });
     setIsPlaying(true);
     setHasPlayed(false);
     setCurrentWordIndex(-1);
+    setIsMuted(false);
+    player.volume = 1;
 
     if (audioSource) {
       player.seekTo(0);
@@ -349,6 +358,22 @@ export default function DetailScreen() {
               ) : null}
             </View>
             <View style={styles.translatedTextContainer}>
+              {isPlaying && (
+                <Pressable
+                  onPress={toggleMute}
+                  style={({ pressed }) => [
+                    styles.muteBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  hitSlop={8}
+                >
+                  <Ionicons
+                    name={isMuted ? "volume-mute" : "volume-high"}
+                    size={16}
+                    color={Colors.light.textMuted}
+                  />
+                </Pressable>
+              )}
               <AnimatedText
                 words={postcard.words}
                 currentWordIndex={currentWordIndex}
@@ -590,6 +615,20 @@ const styles = StyleSheet.create({
   playBtnActive: {
     backgroundColor: Colors.light.accent,
     borderColor: Colors.light.accent,
+  },
+  muteBtn: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: Colors.light.slate200,
   },
   translatedTextContainer: {
     padding: 16,

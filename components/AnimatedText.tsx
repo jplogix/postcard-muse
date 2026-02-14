@@ -18,10 +18,9 @@ interface AnimatedWordProps {
   isPlaying: boolean;
   hasPlayed: boolean;
   afterPause: boolean;
-  totalWords: number;
 }
 
-function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, afterPause, totalWords }: AnimatedWordProps) {
+function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, afterPause }: AnimatedWordProps) {
   const progress = useSharedValue(0);
   const highlight = useSharedValue(0);
   const fade = useSharedValue(1);
@@ -76,14 +75,14 @@ function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, aft
   }, [currentWordIndex, isPlaying, hasPlayed, index, afterPause]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const baseOpacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.4, 1]);
+    const baseOpacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.5, 1]);
     const opacity = baseOpacity * fade.value;
-    const translateY = interpolate(progress.value, [0, 1], [6, 0]);
+    const translateX = interpolate(progress.value, [0, 1], [4, 0]);
     const scale = interpolate(highlight.value, [0, 1], [1, 1.06]);
 
     return {
       opacity,
-      transform: [{ translateY }, { scale }],
+      transform: [{ translateX }, { scale }],
     };
   });
 
@@ -128,7 +127,6 @@ export default function AnimatedText({ words, currentWordIndex, isPlaying, hasPl
           isPlaying={isPlaying}
           hasPlayed={hasPlayed}
           afterPause={pauseFlags[index]}
-          totalWords={words.length}
         />
       ))}
     </View>
