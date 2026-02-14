@@ -18,39 +18,57 @@ interface AnimatedWordProps {
   isPlaying: boolean;
   hasPlayed: boolean;
   afterPause: boolean;
+  totalWords: number;
 }
 
-function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, afterPause }: AnimatedWordProps) {
+function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, afterPause, totalWords }: AnimatedWordProps) {
   const progress = useSharedValue(0);
   const highlight = useSharedValue(0);
+  const fade = useSharedValue(1);
 
   useEffect(() => {
     if (hasPlayed && !isPlaying) {
       progress.value = withTiming(1, { duration: 200 });
       highlight.value = withTiming(0, { duration: 200 });
+      fade.value = withTiming(1, { duration: 300 });
       return;
     }
 
     if (!isPlaying && !hasPlayed) {
       progress.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.quad) });
       highlight.value = withTiming(0, { duration: 200 });
+      fade.value = withTiming(1, { duration: 200 });
       return;
     }
 
     if (index <= currentWordIndex) {
       if (afterPause && index === currentWordIndex) {
-        progress.value = withDelay(60, withSpring(1, { damping: 16, stiffness: 90, mass: 1 }));
-      } else {
+        progress.value = withDelay(80, withSpring(1, { damping: 18, stiffness: 80, mass: 1.1 }));
+      } else if (index === currentWordIndex) {
         progress.value = withSpring(1, { damping: 14, stiffness: 120, mass: 0.8 });
+      } else {
+        progress.value = withTiming(1, { duration: 150 });
+      }
+
+      const lag = currentWordIndex - index;
+      if (lag > 8) {
+        fade.value = withTiming(0.35, { duration: 600, easing: Easing.out(Easing.quad) });
+      } else if (lag > 5) {
+        fade.value = withTiming(0.55, { duration: 500, easing: Easing.out(Easing.quad) });
+      } else if (lag > 3) {
+        fade.value = withTiming(0.75, { duration: 400, easing: Easing.out(Easing.quad) });
+      } else {
+        fade.value = withTiming(1, { duration: 250 });
       }
     } else {
       progress.value = withTiming(0, { duration: 200 });
+      fade.value = withTiming(1, { duration: 200 });
     }
 
     if (index === currentWordIndex) {
-      const highlightDur = afterPause ? 200 : 150;
+      const highlightDur = afterPause ? 220 : 150;
       highlight.value = afterPause
-        ? withDelay(60, withTiming(1, { duration: highlightDur }))
+        ? withDelay(80, withTiming(1, { duration: highlightDur }))
         : withTiming(1, { duration: highlightDur });
     } else {
       highlight.value = withTiming(0, { duration: 250 });
@@ -58,9 +76,10 @@ function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, aft
   }, [currentWordIndex, isPlaying, hasPlayed, index, afterPause]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.4, 1]);
-    const translateY = interpolate(progress.value, [0, 1], [8, 0]);
-    const scale = interpolate(highlight.value, [0, 1], [1, 1.08]);
+    const baseOpacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.4, 1]);
+    const opacity = baseOpacity * fade.value;
+    const translateY = interpolate(progress.value, [0, 1], [6, 0]);
+    const scale = interpolate(highlight.value, [0, 1], [1, 1.06]);
 
     return {
       opacity,
@@ -109,6 +128,7 @@ export default function AnimatedText({ words, currentWordIndex, isPlaying, hasPl
           isPlaying={isPlaying}
           hasPlayed={hasPlayed}
           afterPause={pauseFlags[index]}
+          totalWords={words.length}
         />
       ))}
     </View>
