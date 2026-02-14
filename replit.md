@@ -19,12 +19,13 @@ The project is a full-stack Expo + Express application. The Expo frontend handle
 - Loading jokes now show relevant emojis above each joke, fixed-height container (90px) to prevent layout shift
 - TTS audio now has larger breathing pauses at punctuation (500ms at periods, 280ms at commas, 0.5s sentence silence)
 - Word timings are syllable-proportional with punctuation-aware pause allocation for tighter audio-text sync
-- After playback finishes, a gradient overlay (transparent→white) fades in over the text with a centered "Replay" button
-- Replay overlay fades away when replay is pressed, then audio and text animation restart
+- After playback finishes, a gradient overlay (transparent→white) slowly fades in (800ms) over the text with a centered "Replay" button
+- Replay hides backdrop+button immediately (200ms), then audio and text animation restart
+- Small speaker/mute button appears in top-right of text container only during audio playback
 - Exclude-address toggle in Settings; AI prompt conditionally skips mailing addresses
 - Redesigned add screen with dedicated Camera and Upload buttons for each image slot, showing postcard frame guide with 16:10 aspect ratio
 - Both camera and upload support native crop editing; selected images show retake chips (camera/upload icons) at bottom-right corner
-- AnimatedText now fades earlier words (opacity reduces as lag from current word increases: 3+, 5+, 8+ words back)
+- AnimatedText uses x-axis (horizontal) fade-in animation, no vertical movement; earlier words fade as lag increases (3+, 5+, 8+ words back)
 - After-pause words use softer spring (damping 18, stiffness 80, mass 1.1) with 80ms delay for more natural pacing
 
 ## User Preferences
