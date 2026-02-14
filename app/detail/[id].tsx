@@ -153,7 +153,7 @@ export default function DetailScreen() {
         <MeshGradientBackground />
         <View style={styles.notFound}>
           <Text style={styles.notFoundText}>Postcard not found</Text>
-          <Pressable onPress={() => router.back()}>
+          <Pressable onPress={() => router.replace("/")}>
             <Text style={styles.backLink}>Go back</Text>
           </Pressable>
         </View>
