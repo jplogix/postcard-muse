@@ -1,0 +1,89 @@
+Here's a prompt you can use for the Replit agent:
+
+  # Fix Font Loading Timeout Errors in Expo React Native App
+
+  ## Problem
+  The app is experiencing "6000ms timeout exceeded" errors related to font loading on the web platform.
+  These errors appear in the console and are caused by the FontFace API taking too long to load custom
+  fonts.
+
+  ## Root Cause
+  In `app/_layout.tsx`, the web font loading code (lines 68-89) uses `face.load()` without any timeout
+  protection. When fonts take too long to load, the browser's FontFace API times out after ~6 seconds,
+  throwing an error.
+
+  ## Solution
+  Add timeout handling to the font loading logic with the following changes:
+
+  ### Change 1: Add timeout wrapper function (around line 77)
+  Replace the existing font loading logic with a new `loadFontWithTimeout` helper function that:
+  - Accepts font name, source, and timeout (default 3000ms)
+  - Uses Promise.race() to race between font.load() and a timeout promise
+  - Silently catches errors and logs warnings instead of throwing
+  - Has this structure:
+
+  ```typescript
+  const loadFontWithTimeout = async (
+    name: string,
+    src: string,
+    timeoutMs: number = 3000
+  ) => {
+    try {
+      const url = typeof src === "string" ? src : "";
+      if (!url) return;
+
+      const face = new FontFace(name, `url(${url})`);
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Font load timeout")), timeoutMs);
+      });
+
+      // Race between font load and timeout
+      const loaded = await Promise.race([face.load(), timeoutPromise]);
+
+      // Add the loaded font to document
+      (document.fonts as any).add(loaded);
+    } catch (error) {
+      // Silently fail - app will use fallback fonts
+      console.warn(`Failed to load font "${name}":`, error);
+    }
+  };
+
+  Change 2: Update font loading loop (around line 77)
+
+  Replace the map function that loads fonts to use the new helper:
+
+  const loadAll = Object.entries(fontMap).map(([name, src]) =>
+    loadFontWithTimeout(name, src, 3000)
+  );
+
+  Change 3: Improve error handler (lines 16-22)
+
+  Enhance the unhandledrejection event listener to catch more timeout errors:
+
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.addEventListener("unhandledrejection", (e) => {
+      // Suppress font loading errors that may occur during initialization
+      if (
+        e.reason?.message?.includes("timeout exceeded") ||
+        e.reason?.message?.includes("Font load timeout") ||
+        String(e.reason).includes("timeout")
+      ) {
+        e.preventDefault();
+      }
+    });
+  }
+
+  Expected Outcome
+
+  - No more timeout errors shown to users
+  - Faster app startup (3s timeout instead of 6s)
+  - Graceful fallback to system fonts if custom fonts fail
+  - App continues to work even if fonts fail to load
+
+  Files to Modify
+
+  - app/_layout.tsx (specifically the useFontLoader hook and the unhandledrejection handler at the top)
+
+  Please implement these changes to fix the font loading timeout errors.
