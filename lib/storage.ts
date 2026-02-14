@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system";
 import * as Crypto from "expo-crypto";
+import { Platform } from "react-native";
 
 export interface Postcard {
   id: string;
@@ -17,9 +18,10 @@ export interface Postcard {
 
 const POSTCARDS_KEY = "postcards_data";
 const SETTINGS_KEY = "postcard_settings";
-const IMAGE_DIR = `${FileSystem.documentDirectory}postcards/`;
+const IMAGE_DIR = Platform.OS === "web" ? "" : `${(FileSystem as any).documentDirectory}postcards/`;
 
 async function ensureImageDir() {
+  if (Platform.OS === "web") return;
   const info = await FileSystem.getInfoAsync(IMAGE_DIR);
   if (!info.exists) {
     await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
@@ -27,6 +29,7 @@ async function ensureImageDir() {
 }
 
 export async function saveImagePermanently(uri: string): Promise<string> {
+  if (Platform.OS === "web") return uri;
   await ensureImageDir();
   const id = Crypto.randomUUID();
   const ext = uri.includes(".png") ? "png" : "jpg";
@@ -51,7 +54,7 @@ export async function savePostcard(postcard: Postcard): Promise<void> {
 export async function deletePostcard(id: string): Promise<void> {
   const postcards = await getPostcards();
   const card = postcards.find((p) => p.id === id);
-  if (card) {
+  if (card && Platform.OS !== "web") {
     try {
       await FileSystem.deleteAsync(card.frontImageUri, { idempotent: true });
       if (card.backImageUri) {
@@ -74,8 +77,18 @@ export async function saveSettings(settings: { targetLanguage: string }): Promis
 }
 
 export async function imageToBase64(uri: string): Promise<string> {
+  if (Platform.OS === "web") {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
   const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: (FileSystem as any).EncodingType.Base64,
   });
   return `data:image/jpeg;base64,${base64}`;
 }
