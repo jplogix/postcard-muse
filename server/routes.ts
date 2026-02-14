@@ -1,5 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
@@ -10,91 +13,68 @@ const ai = new GoogleGenAI({
   },
 });
 
-const directAi = process.env.GEMINI_API_KEY
-  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  : null;
-
-function createWavBuffer(pcmData: Buffer, sampleRate = 24000, channels = 1, bitDepth = 16): Buffer {
-  const byteRate = sampleRate * channels * (bitDepth / 8);
-  const blockAlign = channels * (bitDepth / 8);
-  const header = Buffer.alloc(44);
-  header.write("RIFF", 0);
-  header.writeUInt32LE(36 + pcmData.length, 4);
-  header.write("WAVE", 8);
-  header.write("fmt ", 12);
-  header.writeUInt32LE(16, 16);
-  header.writeUInt16LE(1, 20);
-  header.writeUInt16LE(channels, 22);
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(byteRate, 28);
-  header.writeUInt16LE(blockAlign, 32);
-  header.writeUInt16LE(bitDepth, 34);
-  header.write("data", 36);
-  header.writeUInt32LE(pcmData.length, 40);
-  return Buffer.concat([header, pcmData]);
-}
+const PIPER_MODEL = path.resolve(process.cwd(), "server", "voices", "en_GB-alba-medium.onnx");
 
 const ttsCache = new Map<string, { wav: Buffer; durationMs: number }>();
 
-function hashText(text: string, voice: string): string {
+function hashText(text: string): string {
   let hash = 0;
-  const str = `${voice}:${text}`;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
     hash |= 0;
   }
   return Math.abs(hash).toString(36);
 }
 
+async function generatePiperTTS(text: string): Promise<{ wav: Buffer; durationMs: number }> {
+  const tmpFile = path.join(os.tmpdir(), `piper_${Date.now()}.wav`);
+  try {
+    const { spawn } = require("node:child_process");
+    const child = spawn("piper", [
+      "--model", PIPER_MODEL,
+      "--output_file", tmpFile,
+      "--quiet",
+    ]);
+    child.stdin.write(text);
+    child.stdin.end();
+    await new Promise<void>((resolve, reject) => {
+      child.on("close", (code: number) => code === 0 ? resolve() : reject(new Error(`Piper exited with code ${code}`)));
+      child.on("error", reject);
+    });
+
+    const wavBuffer = fs.readFileSync(tmpFile);
+    const dataSize = wavBuffer.readUInt32LE(40);
+    const sampleRate = wavBuffer.readUInt32LE(24);
+    const channels = wavBuffer.readUInt16LE(22);
+    const bitDepth = wavBuffer.readUInt16LE(34);
+    const durationMs = Math.round((dataSize / (sampleRate * channels * (bitDepth / 8))) * 1000);
+
+    return { wav: wavBuffer, durationMs };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch {}
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts", async (req: Request, res: Response) => {
     try {
-      const { text, voice } = req.body;
+      const { text } = req.body;
       if (!text) {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      const voiceName = voice || "Aoede";
-      const cacheKey = hashText(text, voiceName);
+      const cacheKey = hashText(text);
 
       if (ttsCache.has(cacheKey)) {
         const cached = ttsCache.get(cacheKey)!;
         return res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs: cached.durationMs });
       }
 
-      const ttsClient = directAi || ai;
+      const result = await generatePiperTTS(text);
+      ttsCache.set(cacheKey, result);
 
-      const response = await ttsClient.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: `Read this text naturally and warmly: ${text}` }] }],
-        config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName,
-              },
-            },
-          },
-        } as any,
-      });
-
-      const candidate = response.candidates?.[0];
-      const part = candidate?.content?.parts?.[0];
-      const audioData = (part as any)?.inlineData?.data;
-
-      if (!audioData) {
-        return res.status(500).json({ error: "No audio generated" });
-      }
-
-      const pcmBuffer = Buffer.from(audioData, "base64");
-      const wavBuffer = createWavBuffer(pcmBuffer);
-      const durationMs = Math.round((pcmBuffer.length / (24000 * 2)) * 1000);
-
-      ttsCache.set(cacheKey, { wav: wavBuffer, durationMs });
-
-      res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs });
+      res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs: result.durationMs });
     } catch (error: any) {
       console.error("TTS error:", error?.message || error);
       res.status(500).json({ error: error.message || "TTS generation failed" });

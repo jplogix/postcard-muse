@@ -126,7 +126,7 @@ export default function DetailScreen() {
       const response = await globalThis.fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: postcard.translatedText, voice: "Aoede" }),
+        body: JSON.stringify({ text: postcard.translatedText }),
       });
 
       if (response.ok) {
@@ -144,7 +144,7 @@ export default function DetailScreen() {
         return;
       }
     } catch (err) {
-      console.log("Gemini TTS unavailable, falling back to device speech");
+      console.log("Piper TTS unavailable, falling back to device speech");
     }
 
     setIsLoadingAudio(false);
