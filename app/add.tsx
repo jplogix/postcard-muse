@@ -144,6 +144,20 @@ export default function AddPostcardScreen() {
 
       setProcessing("saving");
 
+      let audioPath: string | undefined;
+      let audioDurationMs: number | undefined;
+      const translatedText = data.translatedText || "";
+      if (translatedText.length > 0) {
+        try {
+          const ttsResponse = await apiRequest("POST", "/api/tts", { text: translatedText });
+          const ttsData = await ttsResponse.json();
+          audioPath = ttsData.audioUrl;
+          audioDurationMs = ttsData.durationMs;
+        } catch (e) {
+          console.log("TTS pre-generation skipped:", e);
+        }
+      }
+
       const frontUri = frontImage ? await saveImagePermanently(frontImage) : "";
       const backUri = backImage ? await saveImagePermanently(backImage) : null;
 
@@ -152,11 +166,13 @@ export default function AddPostcardScreen() {
         frontImageUri: frontUri || (backUri ?? ""),
         backImageUri: backUri,
         originalText: data.originalText || "",
-        translatedText: data.translatedText || "",
+        translatedText,
         detectedLanguage: data.detectedLanguage || "Unknown",
         targetLanguage,
         description: data.description || "",
         words: data.words || [],
+        audioPath,
+        audioDurationMs,
         createdAt: Date.now(),
       };
 

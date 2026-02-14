@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from "react";
-import { Postcard, getPostcards, savePostcard, deletePostcard, getSettings, saveSettings } from "./storage";
+import { Postcard, getPostcards, savePostcard, deletePostcard, updatePostcardData, getSettings, saveSettings } from "./storage";
 
 interface PostcardContextValue {
   postcards: Postcard[];
@@ -7,6 +7,7 @@ interface PostcardContextValue {
   targetLanguage: string;
   setTargetLanguage: (lang: string) => Promise<void>;
   addPostcard: (postcard: Postcard) => Promise<void>;
+  updatePostcard: (id: string, updates: Partial<Postcard>) => Promise<void>;
   removePostcard: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -40,6 +41,11 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
     setPostcards((prev) => [postcard, ...prev]);
   }, []);
 
+  const updatePostcard = useCallback(async (id: string, updates: Partial<Postcard>) => {
+    await updatePostcardData(id, updates);
+    setPostcards((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+  }, []);
+
   const removePostcard = useCallback(async (id: string) => {
     await deletePostcard(id);
     setPostcards((prev) => prev.filter((p) => p.id !== id));
@@ -57,10 +63,11 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
       targetLanguage,
       setTargetLanguage,
       addPostcard,
+      updatePostcard,
       removePostcard,
       refresh: loadData,
     }),
-    [postcards, isLoading, targetLanguage, setTargetLanguage, addPostcard, removePostcard, loadData]
+    [postcards, isLoading, targetLanguage, setTargetLanguage, addPostcard, updatePostcard, removePostcard, loadData]
   );
 
   return <PostcardContext.Provider value={value}>{children}</PostcardContext.Provider>;

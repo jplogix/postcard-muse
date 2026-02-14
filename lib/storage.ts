@@ -53,6 +53,15 @@ export async function savePostcard(postcard: Postcard): Promise<void> {
   await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(postcards));
 }
 
+export async function updatePostcardData(id: string, updates: Partial<Postcard>): Promise<void> {
+  const postcards = await getPostcards();
+  const idx = postcards.findIndex((p) => p.id === id);
+  if (idx !== -1) {
+    postcards[idx] = { ...postcards[idx], ...updates };
+    await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(postcards));
+  }
+}
+
 export async function deletePostcard(id: string): Promise<void> {
   const postcards = await getPostcards();
   const card = postcards.find((p) => p.id === id);

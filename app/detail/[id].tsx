@@ -8,7 +8,6 @@ import {
   Platform,
   Alert,
   Dimensions,
-  ActivityIndicator,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,12 +33,15 @@ export default function DetailScreen() {
 
   const postcard = postcards.find((p) => p.id === id);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
-  const [audioSource, setAudioSource] = useState<string | null>(null);
-  const [audioDurationMs, setAudioDurationMs] = useState(0);
   const wordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pendingPlayRef = useRef(false);
+
+  const baseUrl = getApiUrl();
+  const initialAudioUrl = postcard?.audioPath
+    ? new URL(postcard.audioPath, baseUrl).toString()
+    : null;
+  const [audioSource, setAudioSource] = useState<string | null>(initialAudioUrl);
+  const [audioDurationMs, setAudioDurationMs] = useState(postcard?.audioDurationMs || 0);
 
   const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
@@ -49,7 +51,6 @@ export default function DetailScreen() {
     wordTimerRef.current = null;
     setIsPlaying(false);
     setCurrentWordIndex(-1);
-    pendingPlayRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -57,14 +58,6 @@ export default function DetailScreen() {
       if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (audioSource && pendingPlayRef.current) {
-      pendingPlayRef.current = false;
-      player.seekTo(0);
-      player.play();
-    }
-  }, [audioSource, player]);
 
   useEffect(() => {
     if (status.playing && !wordTimerRef.current && isPlaying) {
@@ -93,6 +86,8 @@ export default function DetailScreen() {
     }
   }, [status.playing, status.currentTime, isPlaying, cleanup]);
 
+  const { updatePostcard } = usePostcards();
+
   const playAudio = useCallback(async () => {
     if (!postcard?.translatedText || !postcard.words?.length) return;
 
@@ -104,10 +99,14 @@ export default function DetailScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsPlaying(true);
-    setIsLoadingAudio(true);
+
+    if (audioSource) {
+      player.seekTo(0);
+      player.play();
+      return;
+    }
 
     try {
-      const baseUrl = getApiUrl();
       const url = new URL("/api/tts", baseUrl);
       const response = await globalThis.fetch(url.toString(), {
         method: "POST",
@@ -120,21 +119,19 @@ export default function DetailScreen() {
       const data = await response.json();
       const fullAudioUrl = new URL(data.audioUrl, baseUrl).toString();
       setAudioDurationMs(data.durationMs);
-      setIsLoadingAudio(false);
+      setAudioSource(fullAudioUrl);
 
-      if (audioSource === fullAudioUrl) {
-        player.seekTo(0);
-        player.play();
-      } else {
-        pendingPlayRef.current = true;
-        setAudioSource(fullAudioUrl);
+      if (updatePostcard) {
+        updatePostcard(postcard.id, {
+          audioPath: data.audioUrl,
+          audioDurationMs: data.durationMs,
+        });
       }
     } catch (err) {
       console.error("Piper TTS error:", err);
-      setIsLoadingAudio(false);
       cleanup();
     }
-  }, [postcard, isPlaying, player, cleanup, audioSource]);
+  }, [postcard, isPlaying, player, cleanup, audioSource, baseUrl, updatePostcard]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;
@@ -279,22 +276,17 @@ export default function DetailScreen() {
               <Text style={styles.translatedLabel}>TRANSLATED MESSAGE</Text>
               <Pressable
                 onPress={playAudio}
-                disabled={isLoadingAudio}
                 style={({ pressed }) => [
                   styles.playBtn,
-                  (isPlaying || isLoadingAudio) && styles.playBtnActive,
+                  isPlaying && styles.playBtnActive,
                   pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
                 ]}
               >
-                {isLoadingAudio ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Ionicons
-                    name={isPlaying ? "stop" : "play"}
-                    size={16}
-                    color={isPlaying ? "#FFFFFF" : Colors.light.accent}
-                  />
-                )}
+                <Ionicons
+                  name={isPlaying ? "stop" : "play"}
+                  size={16}
+                  color={isPlaying ? "#FFFFFF" : Colors.light.accent}
+                />
               </Pressable>
             </View>
             <View style={styles.translatedTextContainer}>
