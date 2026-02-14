@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, StyleSheet, Dimensions, Image } from "react-native";
+import { View, StyleSheet, Dimensions } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -18,6 +18,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
 const NUM_STATIC_PARTICLES = 60;
+const NUM_TEXT_BLOCKS = 6;
 const IMAGE_SCALE = 1.35;
 const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
 const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
@@ -30,6 +31,15 @@ const PARTICLE_COLORS = [
   Colors.light.accentLight,
 ];
 
+const BLOCK_COLORS = [
+  "rgba(99, 102, 241, 0.5)",
+  "rgba(167, 139, 250, 0.5)",
+  "rgba(244, 114, 182, 0.45)",
+  "rgba(34, 211, 238, 0.45)",
+  "rgba(129, 140, 248, 0.5)",
+  "rgba(167, 139, 250, 0.45)",
+];
+
 interface ParticleConfig {
   x: number;
   y: number;
@@ -39,6 +49,16 @@ interface ParticleConfig {
   flickerDuration: number;
   driftX: number;
   driftY: number;
+}
+
+interface TextBlockConfig {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  delay: number;
+  cycleDuration: number;
 }
 
 function generateParticleConfigs(count: number): ParticleConfig[] {
@@ -58,11 +78,31 @@ function generateParticleConfigs(count: number): ParticleConfig[] {
   return configs;
 }
 
-interface StaticParticleProps {
-  config: ParticleConfig;
+function generateTextBlockConfigs(count: number): TextBlockConfig[] {
+  const configs: TextBlockConfig[] = [];
+  const margin = 16;
+  const usableW = CARD_WIDTH - margin * 2;
+  const usableH = CARD_HEIGHT - margin * 2;
+
+  for (let i = 0; i < count; i++) {
+    const w = 40 + Math.random() * (usableW * 0.45);
+    const h = 8 + Math.random() * 14;
+    const x = margin + Math.random() * (usableW - w);
+    const y = margin + Math.random() * (usableH - h);
+    const stagger = i * 1800;
+    const cycleDuration = count * 1800;
+
+    configs.push({
+      x, y, width: w, height: h,
+      color: BLOCK_COLORS[i % BLOCK_COLORS.length],
+      delay: stagger,
+      cycleDuration,
+    });
+  }
+  return configs;
 }
 
-function StaticParticle({ config }: StaticParticleProps) {
+function StaticParticle({ config }: { config: ParticleConfig }) {
   const opacity = useSharedValue(0);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -130,6 +170,73 @@ function StaticParticle({ config }: StaticParticleProps) {
   );
 }
 
+function TextBlockOutline({ config }: { config: TextBlockConfig }) {
+  const opacity = useSharedValue(0);
+  const scaleX = useSharedValue(0.3);
+
+  useEffect(() => {
+    const showDuration = 1200;
+    const hideDuration = config.cycleDuration - showDuration;
+
+    opacity.value = withDelay(
+      config.delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) }),
+          withTiming(0.7, { duration: showDuration - 360 }),
+          withTiming(0, { duration: 180, easing: Easing.in(Easing.quad) }),
+          withTiming(0, { duration: hideDuration })
+        ),
+        -1,
+        false
+      )
+    );
+
+    scaleX.value = withDelay(
+      config.delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) }),
+          withTiming(1, { duration: showDuration - 250 }),
+          withTiming(0.3, { duration: 180 }),
+          withTiming(0.3, { duration: config.cycleDuration - showDuration })
+        ),
+        -1,
+        false
+      )
+    );
+
+    return () => {
+      cancelAnimation(opacity);
+      cancelAnimation(scaleX);
+    };
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scaleX: scaleX.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: "absolute",
+          left: config.x,
+          top: config.y,
+          width: config.width,
+          height: config.height,
+          borderRadius: 3,
+          borderWidth: 1.5,
+          borderColor: config.color,
+          backgroundColor: config.color.replace(/[\d.]+\)$/, "0.08)"),
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
 interface ScanningAnimationProps {
   imageUri: string;
   statusText: string;
@@ -143,6 +250,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const panY = useSharedValue(0);
 
   const particleConfigs = useMemo(() => generateParticleConfigs(NUM_STATIC_PARTICLES), []);
+  const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
@@ -243,7 +351,10 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
         <View style={styles.particlesContainer}>
           {particleConfigs.map((config, i) => (
-            <StaticParticle key={i} config={config} />
+            <StaticParticle key={`p${i}`} config={config} />
+          ))}
+          {textBlockConfigs.map((config, i) => (
+            <TextBlockOutline key={`tb${i}`} config={config} />
           ))}
         </View>
 
