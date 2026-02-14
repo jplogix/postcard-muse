@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { View, StyleSheet, Dimensions, Image } from "react-native";
 import Animated, {
   useSharedValue,
@@ -17,48 +17,62 @@ import Colors from "@/constants/colors";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
-const NUM_PARTICLES = 24;
+const NUM_STATIC_PARTICLES = 60;
 
-interface ParticleProps {
-  index: number;
-  scanProgress: Animated.SharedValue<number>;
+const PARTICLE_COLORS = [
+  Colors.light.particleIndigo,
+  Colors.light.particlePurple,
+  Colors.light.particlePink,
+  Colors.light.particleCyan,
+  Colors.light.accentLight,
+];
+
+interface ParticleConfig {
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  delay: number;
+  flickerDuration: number;
+  driftX: number;
+  driftY: number;
 }
 
-function Particle({ index, scanProgress }: ParticleProps) {
+function generateParticleConfigs(count: number): ParticleConfig[] {
+  const configs: ParticleConfig[] = [];
+  for (let i = 0; i < count; i++) {
+    configs.push({
+      x: Math.random() * (CARD_WIDTH - 4) + 2,
+      y: Math.random() * (CARD_HEIGHT - 4) + 2,
+      size: 1.5 + Math.random() * 2,
+      color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
+      delay: Math.random() * 2000,
+      flickerDuration: 400 + Math.random() * 800,
+      driftX: (Math.random() - 0.5) * 12,
+      driftY: (Math.random() - 0.5) * 12,
+    });
+  }
+  return configs;
+}
+
+interface StaticParticleProps {
+  config: ParticleConfig;
+}
+
+function StaticParticle({ config }: StaticParticleProps) {
   const opacity = useSharedValue(0);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
-  const scale = useSharedValue(0);
-
-  const side = index % 4;
-  const baseX =
-    side === 0
-      ? Math.random() * CARD_WIDTH
-      : side === 1
-        ? Math.random() * CARD_WIDTH
-        : side === 2
-          ? 0
-          : CARD_WIDTH;
-  const baseY =
-    side === 0
-      ? 0
-      : side === 1
-        ? CARD_HEIGHT
-        : Math.random() * CARD_HEIGHT;
-
-  const driftX = (Math.random() - 0.5) * 60;
-  const driftY = (Math.random() - 0.5) * 60;
-  const delay = index * 120 + Math.random() * 400;
-  const duration = 1800 + Math.random() * 1200;
 
   useEffect(() => {
     opacity.value = withDelay(
-      delay,
+      config.delay,
       withRepeat(
         withSequence(
-          withTiming(0.9, { duration: duration * 0.3, easing: Easing.out(Easing.quad) }),
-          withTiming(0.6, { duration: duration * 0.4, easing: Easing.inOut(Easing.quad) }),
-          withTiming(0, { duration: duration * 0.3, easing: Easing.in(Easing.quad) })
+          withTiming(0.85, { duration: config.flickerDuration * 0.25, easing: Easing.out(Easing.quad) }),
+          withTiming(0.3, { duration: config.flickerDuration * 0.2 }),
+          withTiming(0.9, { duration: config.flickerDuration * 0.15, easing: Easing.out(Easing.quad) }),
+          withTiming(0, { duration: config.flickerDuration * 0.4, easing: Easing.in(Easing.quad) })
         ),
         -1,
         false
@@ -66,39 +80,20 @@ function Particle({ index, scanProgress }: ParticleProps) {
     );
 
     translateX.value = withDelay(
-      delay,
+      config.delay,
       withRepeat(
-        withSequence(
-          withTiming(driftX * 0.5, { duration: duration * 0.5, easing: Easing.out(Easing.quad) }),
-          withTiming(driftX, { duration: duration * 0.5, easing: Easing.inOut(Easing.quad) })
-        ),
+        withTiming(config.driftX, { duration: config.flickerDuration, easing: Easing.inOut(Easing.quad) }),
         -1,
         true
       )
     );
 
     translateY.value = withDelay(
-      delay,
+      config.delay,
       withRepeat(
-        withSequence(
-          withTiming(driftY - 20, { duration: duration * 0.6, easing: Easing.out(Easing.quad) }),
-          withTiming(driftY, { duration: duration * 0.4, easing: Easing.inOut(Easing.quad) })
-        ),
+        withTiming(config.driftY, { duration: config.flickerDuration, easing: Easing.inOut(Easing.quad) }),
         -1,
         true
-      )
-    );
-
-    scale.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration: duration * 0.3, easing: Easing.out(Easing.back(2)) }),
-          withTiming(0.6, { duration: duration * 0.4 }),
-          withTiming(0, { duration: duration * 0.3 })
-        ),
-        -1,
-        false
       )
     );
 
@@ -106,28 +101,12 @@ function Particle({ index, scanProgress }: ParticleProps) {
       cancelAnimation(opacity);
       cancelAnimation(translateX);
       cancelAnimation(translateY);
-      cancelAnimation(scale);
     };
   }, []);
 
-  const colors = [
-    Colors.light.particleIndigo,
-    Colors.light.particlePurple,
-    Colors.light.particlePink,
-    Colors.light.particleCyan,
-    Colors.light.accentLight,
-  ];
-
-  const color = colors[index % colors.length];
-  const size = 3 + Math.random() * 5;
-
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
+    transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
   }));
 
   return (
@@ -135,16 +114,12 @@ function Particle({ index, scanProgress }: ParticleProps) {
       style={[
         {
           position: "absolute",
-          left: baseX,
-          top: baseY,
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: color,
-          shadowColor: color,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: size,
+          left: config.x,
+          top: config.y,
+          width: config.size,
+          height: config.size,
+          borderRadius: config.size / 2,
+          backgroundColor: config.color,
         },
         animatedStyle,
       ]}
@@ -162,6 +137,8 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const pulseScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.3);
   const textOpacity = useSharedValue(0);
+
+  const particleConfigs = useMemo(() => generateParticleConfigs(NUM_STATIC_PARTICLES), []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
@@ -222,10 +199,6 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
     opacity: textOpacity.value,
   }));
 
-  const particles = useRef(
-    Array.from({ length: NUM_PARTICLES }, (_, i) => i)
-  ).current;
-
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.glowRing, glowStyle]}>
@@ -241,8 +214,8 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
         <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="cover" />
 
         <View style={styles.particlesContainer}>
-          {particles.map((i) => (
-            <Particle key={i} index={i} scanProgress={scanLineY} />
+          {particleConfigs.map((config, i) => (
+            <StaticParticle key={i} config={config} />
           ))}
         </View>
 
