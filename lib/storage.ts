@@ -84,9 +84,9 @@ export interface AppSettings {
 
 export async function getSettings(): Promise<AppSettings> {
   const data = await AsyncStorage.getItem(SETTINGS_KEY);
-  if (!data) return { targetLanguage: "English", excludeAddress: false };
+  if (!data) return { targetLanguage: "English", excludeAddress: true };
   const parsed = JSON.parse(data);
-  return { targetLanguage: parsed.targetLanguage || "English", excludeAddress: parsed.excludeAddress ?? false };
+  return { targetLanguage: parsed.targetLanguage || "English", excludeAddress: parsed.excludeAddress ?? true };
 }
 
 export async function saveSettings(settings: Partial<AppSettings>): Promise<void> {

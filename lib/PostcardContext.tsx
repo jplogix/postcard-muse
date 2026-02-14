@@ -20,7 +20,7 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
   const [postcards, setPostcards] = useState<Postcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [targetLanguage, setTargetLang] = useState("English");
-  const [excludeAddress, setExcludeAddr] = useState(false);
+  const [excludeAddress, setExcludeAddr] = useState(true);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
