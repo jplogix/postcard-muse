@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -55,7 +55,7 @@ export default function GalleryScreen() {
         <BlurView intensity={60} tint="light" style={styles.headerBlur}>
           <View style={styles.header}>
             <View style={styles.brandRow}>
-              <Image source={require("@/assets/images/postcard-header-icon.png")} style={{ width: 24, height: 18 }} />
+              <MaterialCommunityIcons name="card-text-outline" size={22} color={Colors.light.accent} />
               <Text style={styles.brandText}>Postcard Muse</Text>
             </View>
             <Pressable onPress={handleSettings} hitSlop={12} style={styles.headerIconBtn} testID="settings-button">
