@@ -34,6 +34,19 @@ function createWavBuffer(pcmData: Buffer, sampleRate = 24000, channels = 1, bitD
   return Buffer.concat([header, pcmData]);
 }
 
+const ttsCache = new Map<string, { wav: Buffer; durationMs: number }>();
+
+function hashText(text: string, voice: string): string {
+  let hash = 0;
+  const str = `${voice}:${text}`;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts", async (req: Request, res: Response) => {
     try {
@@ -42,8 +55,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      const ttsClient = directAi || ai;
       const voiceName = voice || "Aoede";
+      const cacheKey = hashText(text, voiceName);
+
+      if (ttsCache.has(cacheKey)) {
+        const cached = ttsCache.get(cacheKey)!;
+        return res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs: cached.durationMs });
+      }
+
+      const ttsClient = directAi || ai;
 
       const response = await ttsClient.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
@@ -70,16 +90,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const pcmBuffer = Buffer.from(audioData, "base64");
       const wavBuffer = createWavBuffer(pcmBuffer);
-
       const durationMs = Math.round((pcmBuffer.length / (24000 * 2)) * 1000);
 
-      res.setHeader("Content-Type", "audio/wav");
-      res.setHeader("X-Audio-Duration-Ms", durationMs.toString());
-      res.send(wavBuffer);
+      ttsCache.set(cacheKey, { wav: wavBuffer, durationMs });
+
+      res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs });
     } catch (error: any) {
       console.error("TTS error:", error?.message || error);
       res.status(500).json({ error: error.message || "TTS generation failed" });
     }
+  });
+
+  app.get("/api/tts-audio/:id", (req: Request, res: Response) => {
+    const cached = ttsCache.get(req.params.id as string);
+    if (!cached) {
+      return res.status(404).json({ error: "Audio not found" });
+    }
+    res.setHeader("Content-Type", "audio/wav");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(cached.wav);
   });
 
   app.post("/api/process-postcard", async (req: Request, res: Response) => {

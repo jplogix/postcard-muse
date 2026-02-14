@@ -14,7 +14,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -37,25 +37,57 @@ export default function DetailScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
+  const [audioSource, setAudioSource] = useState<string | null>(null);
+  const [audioDurationMs, setAudioDurationMs] = useState(0);
   const wordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const usingGeminiRef = useRef(false);
+
+  const player = useAudioPlayer(audioSource);
+  const status = useAudioPlayerStatus(player);
 
   const cleanup = useCallback(() => {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     wordTimerRef.current = null;
     setIsPlaying(false);
     setCurrentWordIndex(-1);
+    usingGeminiRef.current = false;
   }, []);
 
   useEffect(() => {
     return () => {
       Speech.stop();
       if (wordTimerRef.current) clearInterval(wordTimerRef.current);
-      soundRef.current?.unloadAsync().catch(() => {});
     };
   }, []);
 
-  const startWordTimer = useCallback((words: string[], durationMs: number) => {
+  useEffect(() => {
+    if (status.playing && !wordTimerRef.current && isPlaying && usingGeminiRef.current) {
+      const words = postcard?.words || [];
+      if (words.length === 0) return;
+      const duration = audioDurationMs || Math.max((postcard?.translatedText?.length || 20) * 65, 2000);
+      const intervalMs = duration / words.length;
+      let wordIdx = 0;
+      setCurrentWordIndex(0);
+
+      wordTimerRef.current = setInterval(() => {
+        wordIdx++;
+        if (wordIdx >= words.length) {
+          if (wordTimerRef.current) clearInterval(wordTimerRef.current);
+          wordTimerRef.current = null;
+          return;
+        }
+        setCurrentWordIndex(wordIdx);
+      }, intervalMs);
+    }
+  }, [status.playing, isPlaying, audioDurationMs, postcard]);
+
+  useEffect(() => {
+    if (usingGeminiRef.current && isPlaying && !status.playing && status.currentTime > 0) {
+      cleanup();
+    }
+  }, [status.playing, status.currentTime, isPlaying, cleanup]);
+
+  const startWordTimerForSpeech = useCallback((words: string[], durationMs: number) => {
     if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     const intervalMs = durationMs / words.length;
     let wordIdx = 0;
@@ -65,83 +97,20 @@ export default function DetailScreen() {
       wordIdx++;
       if (wordIdx >= words.length) {
         if (wordTimerRef.current) clearInterval(wordTimerRef.current);
+        wordTimerRef.current = null;
         return;
       }
       setCurrentWordIndex(wordIdx);
     }, intervalMs);
   }, []);
 
-  const playWithGemini = useCallback(async (): Promise<boolean> => {
-    if (!postcard?.translatedText) return false;
-    try {
-      const baseUrl = getApiUrl();
-      const url = new URL("/api/tts", baseUrl);
-
-      const response = await globalThis.fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: postcard.translatedText, voice: "Aoede" }),
-      });
-
-      if (!response.ok) return false;
-
-      const durationMs = parseInt(response.headers.get("X-Audio-Duration-Ms") || "0", 10);
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = btoa(
-        new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
-      );
-
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/wav;base64,${base64}` },
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
-
-      const words = postcard.words || [];
-      const audioDuration = durationMs || Math.max(postcard.translatedText.length * 65, 2000);
-      startWordTimer(words, audioDuration);
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          cleanup();
-          sound.unloadAsync().catch(() => {});
-          soundRef.current = null;
-        }
-      });
-
-      return true;
-    } catch (err) {
-      console.log("Gemini TTS unavailable, falling back to device speech");
-      return false;
-    }
-  }, [postcard, startWordTimer, cleanup]);
-
-  const playWithDeviceSpeech = useCallback(() => {
-    if (!postcard?.translatedText || !postcard.words?.length) return;
-    const words = postcard.words;
-    const totalChars = postcard.translatedText.length;
-    const estimatedDurationMs = Math.max(totalChars * 65, 2000);
-    startWordTimer(words, estimatedDurationMs);
-
-    Speech.speak(postcard.translatedText, {
-      language: postcard.targetLanguage === "English" ? "en" : undefined,
-      rate: 0.85,
-      pitch: 1.0,
-      onDone: cleanup,
-      onError: cleanup,
-    });
-  }, [postcard, startWordTimer, cleanup]);
-
   const playAudio = useCallback(async () => {
     if (!postcard?.translatedText || !postcard.words?.length) return;
 
     if (isPlaying) {
       Speech.stop();
-      if (soundRef.current) {
-        await soundRef.current.stopAsync().catch(() => {});
-        await soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
+      if (usingGeminiRef.current) {
+        player.pause();
       }
       cleanup();
       return;
@@ -151,12 +120,46 @@ export default function DetailScreen() {
     setIsPlaying(true);
     setIsLoadingAudio(true);
 
-    const geminiSuccess = await playWithGemini();
-    setIsLoadingAudio(false);
-    if (!geminiSuccess) {
-      playWithDeviceSpeech();
+    try {
+      const baseUrl = getApiUrl();
+      const url = new URL("/api/tts", baseUrl);
+      const response = await globalThis.fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: postcard.translatedText, voice: "Aoede" }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const fullAudioUrl = new URL(data.audioUrl, baseUrl).toString();
+        setAudioDurationMs(data.durationMs);
+        usingGeminiRef.current = true;
+        setAudioSource(fullAudioUrl);
+        setIsLoadingAudio(false);
+
+        setTimeout(() => {
+          player.seekTo(0);
+          player.play();
+        }, 300);
+        return;
+      }
+    } catch (err) {
+      console.log("Gemini TTS unavailable, falling back to device speech");
     }
-  }, [postcard, isPlaying, playWithGemini, playWithDeviceSpeech, cleanup]);
+
+    setIsLoadingAudio(false);
+    const words = postcard.words;
+    const estimatedDurationMs = Math.max(postcard.translatedText.length * 65, 2000);
+    startWordTimerForSpeech(words, estimatedDurationMs);
+
+    Speech.speak(postcard.translatedText, {
+      language: postcard.targetLanguage === "English" ? "en" : undefined,
+      rate: 0.85,
+      pitch: 1.0,
+      onDone: cleanup,
+      onError: cleanup,
+    });
+  }, [postcard, isPlaying, player, cleanup, startWordTimerForSpeech]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;
