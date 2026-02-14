@@ -144,7 +144,7 @@ export default function DetailScreen() {
 
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={Colors.light.textSecondary} />
+          <Ionicons name="close" size={24} color={Colors.light.textSecondary} />
         </Pressable>
         <Pressable onPress={handleDelete} hitSlop={12}>
           <Feather name="trash-2" size={18} color={Colors.light.error} />

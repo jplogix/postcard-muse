@@ -40,7 +40,10 @@ function RootLayoutNav() {
         name="add"
         options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }}
       />
-      <Stack.Screen name="detail/[id]" />
+      <Stack.Screen
+        name="detail/[id]"
+        options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }}
+      />
       <Stack.Screen
         name="settings"
         options={{ presentation: "modal", animation: "slide_from_bottom" }}
