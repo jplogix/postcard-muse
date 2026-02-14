@@ -93,8 +93,15 @@ export default function DetailScreen() {
     });
   }, [postcard, isPlaying]);
 
-  const handleDelete = useCallback(() => {
+  const handleDelete = useCallback(async () => {
     if (!postcard) return;
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Delete this postcard? This cannot be undone.");
+      if (!confirmed) return;
+      await removePostcard(postcard.id);
+      router.back();
+      return;
+    }
     Alert.alert("Delete Postcard", "This will permanently remove this postcard from your collection.", [
       { text: "Cancel", style: "cancel" },
       {
