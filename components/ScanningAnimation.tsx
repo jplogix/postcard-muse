@@ -248,6 +248,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const textOpacity = useSharedValue(0);
   const panX = useSharedValue(0);
   const panY = useSharedValue(0);
+  const glitchOpacity = useSharedValue(0);
 
   const particleConfigs = useMemo(() => generateParticleConfigs(NUM_STATIC_PARTICLES), []);
   const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
@@ -297,12 +298,29 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
       false
     );
 
+    glitchOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 3200 }),
+        withTiming(0.55, { duration: 80 }),
+        withTiming(0, { duration: 120 }),
+        withTiming(0.4, { duration: 60 }),
+        withTiming(0, { duration: 100 }),
+        withTiming(0, { duration: 4500 }),
+        withTiming(0.5, { duration: 70 }),
+        withTiming(0, { duration: 150 }),
+        withTiming(0, { duration: 2800 }),
+      ),
+      -1,
+      false
+    );
+
     return () => {
       cancelAnimation(scanLineY);
       cancelAnimation(panX);
       cancelAnimation(panY);
       cancelAnimation(glowOpacity);
       cancelAnimation(textOpacity);
+      cancelAnimation(glitchOpacity);
     };
   }, []);
 
@@ -325,6 +343,10 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
   const textStyle = useAnimatedStyle(() => ({
     opacity: textOpacity.value,
+  }));
+
+  const glitchStyle = useAnimatedStyle(() => ({
+    opacity: glitchOpacity.value,
   }));
 
   return (
@@ -369,6 +391,8 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
+
+        <Animated.View style={[styles.glitchOverlay, glitchStyle]} pointerEvents="none" />
 
         <View style={styles.cornerTL} />
         <View style={styles.cornerTR} />
@@ -429,6 +453,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     color: Colors.light.accent,
     letterSpacing: 0.3,
+  },
+  glitchOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(99, 102, 241, 0.35)",
+    mixBlendMode: "difference" as any,
   },
   cornerTL: { ...CORNER, top: 8, left: 8, borderTopWidth: 2, borderLeftWidth: 2 },
   cornerTR: { ...CORNER, top: 8, right: 8, borderTopWidth: 2, borderRightWidth: 2 },
