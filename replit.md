@@ -52,6 +52,8 @@ User wants handwritten text animation and audio to be in sync as much as possibl
 - `components/ScanningAnimation.tsx` - Particle scanning effect during AI processing
 - `components/FlipCard.tsx` - 3D flip animation with perspective transform
 - `components/AnimatedText.tsx` - Word-by-word text reveal synced with TTS
+- `components/HandwritingAnimator.tsx` - Staggered character-by-character writing animation (spring physics: damping 12, stiffness 100, 50ms stagger)
+- `components/LoadingJokes.tsx` - Cycling postcard-themed jokes with fade transitions during AI processing
 - `components/PostcardThumbnail.tsx` - Gallery grid item with gradient overlay
 - `lib/PostcardContext.tsx` - React context for postcard state management
 - `lib/storage.ts` - AsyncStorage and FileSystem operations
@@ -67,6 +69,8 @@ User wants handwritten text animation and audio to be in sync as much as possibl
 - `targetLanguage`: User's chosen translation language
 - `description`: AI-generated visual description
 - `words`: Array of individual translated words (for animated TTS highlighting)
+- `audioPath`: (optional) Relative URL path to pre-generated TTS audio
+- `audioDurationMs`: (optional) Duration of pre-generated TTS audio in milliseconds
 - `createdAt`: Timestamp
 
 ### Color Palette
