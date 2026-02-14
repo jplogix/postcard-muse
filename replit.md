@@ -16,6 +16,12 @@ The project is a full-stack Expo + Express application. The Expo frontend handle
 - BlurView glass header on Gallery screen, paper-textured postcard backs
 - StatusBar set to "dark" for light background visibility
 - Updated particle colors in scanning animation to indigo/purple/pink/cyan
+- Loading jokes now show relevant emojis above each joke, fixed-height container (90px) to prevent layout shift
+- TTS audio now has larger breathing pauses at punctuation (500ms at periods, 280ms at commas, 0.5s sentence silence)
+- Word timings are syllable-proportional with punctuation-aware pause allocation for tighter audio-text sync
+- After playback finishes, a gradient overlay (transparent→white) fades in over the text with a centered "Replay" button
+- Replay overlay fades away when replay is pressed, then audio and text animation restart
+- Exclude-address toggle in Settings; AI prompt conditionally skips mailing addresses
 
 ## User Preferences
 
