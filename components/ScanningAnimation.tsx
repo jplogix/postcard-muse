@@ -111,11 +111,11 @@ function Particle({ index, scanProgress }: ParticleProps) {
   }, []);
 
   const colors = [
-    Colors.dark.particleGold,
-    Colors.dark.particleAmber,
-    Colors.dark.particleIndigo,
-    Colors.dark.particleCyan,
-    Colors.dark.accentLight,
+    Colors.light.particleIndigo,
+    Colors.light.particlePurple,
+    Colors.light.particlePink,
+    Colors.light.particleCyan,
+    Colors.light.accentLight,
   ];
 
   const color = colors[index % colors.length];
@@ -181,8 +181,8 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
     glowOpacity.value = withRepeat(
       withSequence(
-        withTiming(0.6, { duration: 1000, easing: Easing.inOut(Easing.quad) }),
-        withTiming(0.2, { duration: 1000, easing: Easing.inOut(Easing.quad) })
+        withTiming(0.5, { duration: 1000, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0.15, { duration: 1000, easing: Easing.inOut(Easing.quad) })
       ),
       -1,
       false
@@ -230,7 +230,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
     <View style={styles.container}>
       <Animated.View style={[styles.glowRing, glowStyle]}>
         <LinearGradient
-          colors={["rgba(212, 160, 83, 0.3)", "rgba(99, 102, 241, 0.2)", "transparent"]}
+          colors={["rgba(99, 102, 241, 0.2)", "rgba(236, 72, 153, 0.15)", "transparent"]}
           style={StyleSheet.absoluteFill}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
@@ -248,7 +248,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
         <Animated.View style={[styles.scanLine, scanLineStyle]}>
           <LinearGradient
-            colors={["transparent", Colors.dark.particleGold, "transparent"]}
+            colors={["transparent", Colors.light.accent, "transparent"]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={StyleSheet.absoluteFill}
@@ -256,7 +256,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
         </Animated.View>
 
         <LinearGradient
-          colors={["rgba(212, 160, 83, 0.15)", "transparent", "rgba(99, 102, 241, 0.15)"]}
+          colors={["rgba(99, 102, 241, 0.1)", "transparent", "rgba(236, 72, 153, 0.1)"]}
           style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -275,7 +275,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   );
 }
 
-const CORNER = { position: "absolute" as const, width: 20, height: 20, borderColor: Colors.dark.accent };
+const CORNER = { position: "absolute" as const, width: 20, height: 20, borderColor: Colors.light.accent };
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
@@ -295,7 +295,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(212, 160, 83, 0.3)",
+    borderColor: "rgba(99, 102, 241, 0.3)",
+    shadowColor: Colors.light.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
   },
   cardImage: {
     width: "100%",
@@ -312,10 +317,10 @@ const styles = StyleSheet.create({
   },
   statusText: {
     marginTop: 28,
-    fontSize: 15,
-    fontWeight: "500" as const,
-    color: Colors.dark.accentLight,
-    letterSpacing: 0.5,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.accent,
+    letterSpacing: 0.3,
   },
   cornerTL: { ...CORNER, top: 8, left: 8, borderTopWidth: 2, borderLeftWidth: 2 },
   cornerTR: { ...CORNER, top: 8, right: 8, borderTopWidth: 2, borderRightWidth: 2 },

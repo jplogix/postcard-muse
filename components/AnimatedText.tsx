@@ -1,10 +1,9 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect } from "react";
 import { View, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withDelay,
   Easing,
 } from "react-native-reanimated";
 import Colors from "@/constants/colors";
@@ -18,15 +17,15 @@ interface AnimatedWordProps {
 }
 
 function AnimatedWord({ word, index, currentWordIndex, isPlaying }: AnimatedWordProps) {
-  const opacity = useSharedValue(0.25);
+  const opacity = useSharedValue(0.3);
   const scale = useSharedValue(0.95);
-  const translateY = useSharedValue(4);
+  const translateY = useSharedValue(3);
 
   useEffect(() => {
     if (!isPlaying) {
-      opacity.value = withTiming(0.25, { duration: 300 });
+      opacity.value = withTiming(0.3, { duration: 300 });
       scale.value = withTiming(0.95, { duration: 300 });
-      translateY.value = withTiming(4, { duration: 300 });
+      translateY.value = withTiming(3, { duration: 300 });
       return;
     }
 
@@ -36,12 +35,12 @@ function AnimatedWord({ word, index, currentWordIndex, isPlaying }: AnimatedWord
       translateY.value = withTiming(0, { duration: 200 });
     } else if (index === currentWordIndex) {
       opacity.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.quad) });
-      scale.value = withTiming(1.08, { duration: 200, easing: Easing.out(Easing.back(1.5)) });
+      scale.value = withTiming(1.06, { duration: 200, easing: Easing.out(Easing.back(1.5)) });
       translateY.value = withTiming(-2, { duration: 200, easing: Easing.out(Easing.quad) });
     } else {
-      opacity.value = withTiming(0.25, { duration: 200 });
+      opacity.value = withTiming(0.3, { duration: 200 });
       scale.value = withTiming(0.95, { duration: 200 });
-      translateY.value = withTiming(4, { duration: 200 });
+      translateY.value = withTiming(3, { duration: 200 });
     }
   }, [currentWordIndex, isPlaying, index]);
 
@@ -95,16 +94,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   word: {
-    fontSize: 20,
-    lineHeight: 32,
-    color: Colors.dark.accentLight,
-    fontStyle: "italic",
+    fontSize: 18,
+    lineHeight: 30,
+    fontFamily: "Caveat_500Medium",
+    color: Colors.light.slate700,
     letterSpacing: 0.3,
   },
   activeWord: {
-    color: Colors.dark.particleGold,
-    textShadowColor: "rgba(255, 215, 0, 0.4)",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
+    color: Colors.light.accent,
   },
 });

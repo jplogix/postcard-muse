@@ -18,7 +18,7 @@ function RootLayoutNav() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: Colors.dark.background },
+        contentStyle: { backgroundColor: Colors.light.background },
         animation: "slide_from_right",
       }}
     >
@@ -44,10 +44,12 @@ export default function RootLayout() {
       try {
         await Promise.race([
           Font.loadAsync({
-            PlayfairDisplay_700Bold: require("@expo-google-fonts/playfair-display/700Bold/PlayfairDisplay_700Bold.ttf"),
-            PlayfairDisplay_400Regular: require("@expo-google-fonts/playfair-display/400Regular/PlayfairDisplay_400Regular.ttf"),
-            DancingScript_400Regular: require("@expo-google-fonts/dancing-script/400Regular/DancingScript_400Regular.ttf"),
-            DancingScript_700Bold: require("@expo-google-fonts/dancing-script/700Bold/DancingScript_700Bold.ttf"),
+            Inter_300Light: require("@expo-google-fonts/inter/300Light/Inter_300Light.ttf"),
+            Inter_400Regular: require("@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf"),
+            Inter_500Medium: require("@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf"),
+            Inter_600SemiBold: require("@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf"),
+            Caveat_400Regular: require("@expo-google-fonts/caveat/400Regular/Caveat_400Regular.ttf"),
+            Caveat_500Medium: require("@expo-google-fonts/caveat/500Medium/Caveat_500Medium.ttf"),
           }),
           new Promise((resolve) => setTimeout(resolve, 4000)),
         ]);
@@ -69,7 +71,7 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
             <PostcardProvider>
-              <StatusBar style="light" />
+              <StatusBar style="dark" />
               <RootLayoutNav />
             </PostcardProvider>
           </KeyboardProvider>

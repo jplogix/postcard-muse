@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -9,33 +9,18 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, Feather } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
+import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const LANGUAGES = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Italian",
-  "Portuguese",
-  "Japanese",
-  "Korean",
-  "Chinese",
-  "Arabic",
-  "Russian",
-  "Hindi",
-  "Dutch",
-  "Swedish",
-  "Turkish",
-  "Polish",
-  "Vietnamese",
-  "Thai",
-  "Indonesian",
-  "Greek",
+  "English", "Spanish", "French", "German", "Italian", "Portuguese",
+  "Japanese", "Korean", "Chinese", "Arabic", "Russian", "Hindi",
+  "Dutch", "Swedish", "Turkish", "Polish", "Vietnamese", "Thai",
+  "Indonesian", "Greek",
 ];
 
 export default function SettingsScreen() {
@@ -51,15 +36,12 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
-      <LinearGradient
-        colors={[Colors.dark.background, "#12121F", Colors.dark.background]}
-        style={StyleSheet.absoluteFill}
-      />
+      <MeshGradientBackground />
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="close" size={24} color={Colors.dark.textSecondary} />
+          <Ionicons name="close" size={24} color={Colors.light.textSecondary} />
         </Pressable>
       </View>
 
@@ -99,7 +81,7 @@ export default function SettingsScreen() {
                 ]}
               >
                 {isSelected && (
-                  <Ionicons name="checkmark-circle" size={14} color={Colors.dark.accent} />
+                  <Ionicons name="checkmark-circle" size={14} color={Colors.light.accent} />
                 )}
                 <Text
                   style={[
@@ -130,7 +112,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
+    backgroundColor: Colors.light.background,
   },
   header: {
     flexDirection: "row",
@@ -140,9 +122,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   headerTitle: {
-    fontSize: 22,
-    fontFamily: "PlayfairDisplay_700Bold",
-    color: Colors.dark.text,
+    fontSize: 20,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.text,
+    letterSpacing: -0.3,
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -155,34 +138,35 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: Colors.light.glassCard,
+    borderRadius: 16,
+    padding: 18,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.glassBorderCard,
   },
   statValue: {
     fontSize: 28,
-    fontFamily: "PlayfairDisplay_700Bold",
-    color: Colors.dark.accent,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.accent,
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
     marginTop: 4,
-    fontWeight: "500" as const,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: Colors.dark.textMuted,
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textMuted,
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: Colors.dark.textSecondary,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
     marginBottom: 16,
   },
   languageGrid: {
@@ -198,46 +182,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.dark.surface,
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.slate200,
   },
   langChipSelected: {
-    backgroundColor: Colors.dark.accentDim,
-    borderColor: "rgba(212, 160, 83, 0.4)",
+    backgroundColor: Colors.light.accentDim,
+    borderColor: "rgba(79, 70, 229, 0.3)",
   },
   langChipText: {
     fontSize: 13,
-    color: Colors.dark.textSecondary,
-    fontWeight: "500" as const,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
   },
   langChipTextSelected: {
-    color: Colors.dark.accent,
-    fontWeight: "700" as const,
+    color: Colors.light.accent,
+    fontFamily: "Inter_600SemiBold",
   },
   aboutSection: {
     padding: 20,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 14,
+    backgroundColor: Colors.light.glassCard,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.glassBorderCard,
     alignItems: "center",
   },
   aboutTitle: {
     fontSize: 16,
-    fontFamily: "PlayfairDisplay_700Bold",
-    color: Colors.dark.text,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.text,
     marginBottom: 8,
   },
   aboutText: {
     fontSize: 13,
-    color: Colors.dark.textSecondary,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
     textAlign: "center",
     lineHeight: 19,
     marginBottom: 12,
   },
   versionText: {
     fontSize: 11,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_300Light",
+    color: Colors.light.textMuted,
   },
 });

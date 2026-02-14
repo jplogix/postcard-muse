@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -22,6 +21,7 @@ import { usePostcards } from "@/lib/PostcardContext";
 import { saveImagePermanently, imageToBase64, Postcard } from "@/lib/storage";
 import { apiRequest } from "@/lib/query-client";
 import ScanningAnimation from "@/components/ScanningAnimation";
+import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -181,10 +181,7 @@ export default function AddPostcardScreen() {
   if (isProcessing || processing === "done") {
     return (
       <View style={[styles.container, { paddingTop: topInset }]}>
-        <LinearGradient
-          colors={[Colors.dark.background, "#0D0D1A", Colors.dark.background]}
-          style={StyleSheet.absoluteFill}
-        />
+        <MeshGradientBackground />
         <View style={styles.processingContainer}>
           <ScanningAnimation
             imageUri={frontImage || backImage || ""}
@@ -193,7 +190,7 @@ export default function AddPostcardScreen() {
           {processing === "done" && (
             <View style={styles.doneContainer}>
               <View style={styles.checkCircle}>
-                <Ionicons name="checkmark" size={32} color={Colors.dark.background} />
+                <Ionicons name="checkmark" size={28} color="#FFFFFF" />
               </View>
             </View>
           )}
@@ -204,17 +201,14 @@ export default function AddPostcardScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
-      <LinearGradient
-        colors={[Colors.dark.background, "#12121F", Colors.dark.background]}
-        style={StyleSheet.absoluteFill}
-      />
+      <MeshGradientBackground />
 
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="close" size={26} color={Colors.dark.textSecondary} />
+          <Ionicons name="close" size={24} color={Colors.light.textSecondary} />
         </Pressable>
         <Text style={styles.headerTitle}>Scan Postcard</Text>
-        <View style={{ width: 26 }} />
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView
@@ -224,14 +218,14 @@ export default function AddPostcardScreen() {
         <Text style={styles.sectionLabel}>FRONT</Text>
         <Pressable
           onPress={() => showImageOptions("front")}
-          style={({ pressed }) => [styles.imagePickerBox, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.imagePickerBox, pressed && { opacity: 0.85 }]}
         >
           {frontImage ? (
             <Image source={{ uri: frontImage }} style={styles.previewImage} contentFit="cover" />
           ) : (
             <View style={styles.placeholderContent}>
               <View style={styles.iconCircle}>
-                <Feather name="image" size={24} color={Colors.dark.accent} />
+                <Feather name="image" size={22} color={Colors.light.accent} />
               </View>
               <Text style={styles.placeholderText}>Add front image</Text>
               <Text style={styles.placeholderSub}>Tap to take a photo or choose from gallery</Text>
@@ -245,7 +239,7 @@ export default function AddPostcardScreen() {
               }}
               style={styles.removeBtn}
             >
-              <Ionicons name="close-circle" size={24} color={Colors.dark.error} />
+              <Ionicons name="close-circle" size={24} color={Colors.light.error} />
             </Pressable>
           )}
         </Pressable>
@@ -253,14 +247,14 @@ export default function AddPostcardScreen() {
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>BACK (optional)</Text>
         <Pressable
           onPress={() => showImageOptions("back")}
-          style={({ pressed }) => [styles.imagePickerBox, styles.backBox, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [styles.imagePickerBox, styles.backBox, pressed && { opacity: 0.85 }]}
         >
           {backImage ? (
             <Image source={{ uri: backImage }} style={styles.previewImage} contentFit="cover" />
           ) : (
             <View style={styles.placeholderContent}>
               <View style={styles.iconCircle}>
-                <Feather name="mail" size={24} color={Colors.dark.indigo} />
+                <Feather name="mail" size={22} color={Colors.light.indigo} />
               </View>
               <Text style={styles.placeholderText}>Add back image</Text>
               <Text style={styles.placeholderSub}>The side with the handwritten message</Text>
@@ -274,20 +268,20 @@ export default function AddPostcardScreen() {
               }}
               style={styles.removeBtn}
             >
-              <Ionicons name="close-circle" size={24} color={Colors.dark.error} />
+              <Ionicons name="close-circle" size={24} color={Colors.light.error} />
             </Pressable>
           )}
         </Pressable>
 
         {processing === "error" && (
           <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={18} color={Colors.dark.error} />
+            <Ionicons name="alert-circle" size={18} color={Colors.light.error} />
             <Text style={styles.errorText}>{errorMsg}</Text>
           </View>
         )}
 
         <View style={styles.langRow}>
-          <Ionicons name="language" size={18} color={Colors.dark.textSecondary} />
+          <Ionicons name="language" size={18} color={Colors.light.textSecondary} />
           <Text style={styles.langLabel}>Translating to: </Text>
           <Text style={styles.langValue}>{targetLanguage}</Text>
         </View>
@@ -303,30 +297,19 @@ export default function AddPostcardScreen() {
             pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
           ]}
         >
-          <LinearGradient
-            colors={
-              frontImage || backImage
-                ? [Colors.dark.accent, "#B8862D"]
-                : [Colors.dark.surfaceElevated, Colors.dark.surfaceElevated]
-            }
-            style={styles.processBtnGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <Ionicons
+            name="sparkles"
+            size={18}
+            color={frontImage || backImage ? "#FFFFFF" : Colors.light.textMuted}
+          />
+          <Text
+            style={[
+              styles.processBtnText,
+              (!frontImage && !backImage) && { color: Colors.light.textMuted },
+            ]}
           >
-            <Ionicons
-              name="sparkles"
-              size={20}
-              color={frontImage || backImage ? "#FFF" : Colors.dark.textMuted}
-            />
-            <Text
-              style={[
-                styles.processBtnText,
-                (!frontImage && !backImage) && { color: Colors.dark.textMuted },
-              ]}
-            >
-              Process with AI
-            </Text>
-          </LinearGradient>
+            Process with AI
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -336,7 +319,7 @@ export default function AddPostcardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
+    backgroundColor: Colors.light.background,
   },
   header: {
     flexDirection: "row",
@@ -346,29 +329,30 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   headerTitle: {
-    fontSize: 17,
-    fontFamily: "PlayfairDisplay_700Bold",
-    color: Colors.dark.text,
+    fontSize: 16,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.text,
+    letterSpacing: -0.2,
   },
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
   },
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: Colors.dark.textMuted,
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textMuted,
     letterSpacing: 1.5,
     marginBottom: 10,
   },
   imagePickerBox: {
     width: "100%",
     height: 200,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
-    backgroundColor: Colors.dark.surface,
+    backgroundColor: Colors.light.glassCard,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.glassBorderCard,
     borderStyle: "dashed",
   },
   backBox: {
@@ -387,20 +371,23 @@ const styles = StyleSheet.create({
   iconCircle: {
     width: 48,
     height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.dark.surfaceElevated,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
+    borderWidth: 1,
+    borderColor: Colors.light.slate200,
   },
   placeholderText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: Colors.dark.textSecondary,
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.textSecondary,
   },
   placeholderSub: {
     fontSize: 12,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
   },
   removeBtn: {
     position: "absolute",
@@ -412,16 +399,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginTop: 16,
-    backgroundColor: "rgba(248, 113, 113, 0.1)",
+    backgroundColor: "rgba(239, 68, 68, 0.08)",
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(248, 113, 113, 0.2)",
+    borderColor: "rgba(239, 68, 68, 0.15)",
   },
   errorText: {
     fontSize: 13,
-    color: Colors.dark.error,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.error,
     flex: 1,
   },
   langRow: {
@@ -431,19 +419,20 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 10,
+    backgroundColor: Colors.light.glassCard,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.glassBorderCard,
   },
   langLabel: {
     fontSize: 13,
-    color: Colors.dark.textSecondary,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
   },
   langValue: {
     fontSize: 13,
-    fontWeight: "600" as const,
-    color: Colors.dark.accent,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.accent,
   },
   bottomBar: {
     position: "absolute",
@@ -452,28 +441,26 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: "rgba(15, 15, 26, 0.95)",
+    backgroundColor: "rgba(250, 250, 250, 0.9)",
     borderTopWidth: 1,
-    borderTopColor: Colors.dark.border,
+    borderTopColor: Colors.light.slate200,
   },
   processBtn: {
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  processBtnDisabled: {
-    opacity: 0.6,
-  },
-  processBtnGradient: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 15,
+    borderRadius: 14,
+    backgroundColor: Colors.light.slate900,
+  },
+  processBtnDisabled: {
+    backgroundColor: Colors.light.slate200,
   },
   processBtnText: {
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: "#FFF",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#FFFFFF",
   },
   processingContainer: {
     flex: 1,
@@ -485,10 +472,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.dark.success,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.light.success,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Speech from "expo-speech";
@@ -20,6 +19,7 @@ import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import FlipCard, { CARD_WIDTH, CARD_HEIGHT } from "@/components/FlipCard";
 import AnimatedText from "@/components/AnimatedText";
+import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -112,6 +112,7 @@ export default function DetailScreen() {
   if (!postcard) {
     return (
       <View style={[styles.container, { paddingTop: topInset }]}>
+        <MeshGradientBackground />
         <View style={styles.notFound}>
           <Text style={styles.notFoundText}>Postcard not found</Text>
           <Pressable onPress={() => router.back()}>
@@ -132,17 +133,14 @@ export default function DetailScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
-      <LinearGradient
-        colors={[Colors.dark.background, "#0D0D1A", Colors.dark.background]}
-        style={StyleSheet.absoluteFill}
-      />
+      <MeshGradientBackground />
 
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={26} color={Colors.dark.textSecondary} />
+          <Ionicons name="chevron-back" size={24} color={Colors.light.textSecondary} />
         </Pressable>
         <Pressable onPress={handleDelete} hitSlop={12}>
-          <Feather name="trash-2" size={20} color={Colors.dark.error} />
+          <Feather name="trash-2" size={18} color={Colors.light.error} />
         </Pressable>
       </View>
 
@@ -151,7 +149,7 @@ export default function DetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.flipHint}>
-          <MaterialCommunityIcons name="gesture-tap" size={16} color={Colors.dark.textMuted} />
+          <MaterialCommunityIcons name="gesture-tap" size={14} color={Colors.light.textMuted} />
           <Text style={styles.flipHintText}>Tap card to flip</Text>
         </View>
 
@@ -162,10 +160,6 @@ export default function DetailScreen() {
                 source={{ uri: postcard.frontImageUri }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.3)"]}
-                style={[StyleSheet.absoluteFillObject, { top: "60%" }]}
               />
             </View>
           }
@@ -181,23 +175,22 @@ export default function DetailScreen() {
                   <View style={styles.backOverlay} />
                 </>
               ) : (
-                <LinearGradient
-                  colors={[Colors.dark.surface, Colors.dark.surfaceElevated]}
-                  style={StyleSheet.absoluteFill}
-                />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.light.paper }]} />
               )}
               <View style={styles.backContent}>
-                {postcard.originalText ? (
-                  <Text style={styles.backText} numberOfLines={8}>
-                    {postcard.originalText}
-                  </Text>
-                ) : (
-                  <Text style={styles.noTextLabel}>No text extracted</Text>
-                )}
+                <View style={styles.backContentInner}>
+                  {postcard.originalText ? (
+                    <Text style={styles.backText} numberOfLines={8}>
+                      {postcard.originalText}
+                    </Text>
+                  ) : (
+                    <Text style={styles.noTextLabel}>No text extracted</Text>
+                  )}
+                </View>
               </View>
               <View style={styles.stampArea}>
                 <View style={styles.stampDecor}>
-                  <Ionicons name="mail" size={16} color={Colors.dark.accent} />
+                  <Ionicons name="mail" size={14} color={Colors.light.accent} />
                 </View>
               </View>
             </View>
@@ -205,7 +198,7 @@ export default function DetailScreen() {
         />
 
         <View style={styles.dateRow}>
-          <Ionicons name="calendar-outline" size={14} color={Colors.dark.textMuted} />
+          <Ionicons name="calendar-outline" size={13} color={Colors.light.textMuted} />
           <Text style={styles.dateText}>{dateStr}</Text>
         </View>
 
@@ -218,14 +211,14 @@ export default function DetailScreen() {
 
         <View style={styles.infoRow}>
           <View style={styles.infoPill}>
-            <Ionicons name="language" size={14} color={Colors.dark.indigo} />
+            <Ionicons name="language" size={13} color={Colors.light.accent} />
             <Text style={styles.infoPillText}>{postcard.detectedLanguage}</Text>
           </View>
           <View style={styles.infoArrow}>
-            <Feather name="arrow-right" size={14} color={Colors.dark.textMuted} />
+            <Feather name="arrow-right" size={13} color={Colors.light.textMuted} />
           </View>
           <View style={styles.infoPill}>
-            <Ionicons name="globe" size={14} color={Colors.dark.accent} />
+            <Ionicons name="globe" size={13} color={Colors.light.pink} />
             <Text style={styles.infoPillText}>{postcard.targetLanguage}</Text>
           </View>
         </View>
@@ -244,8 +237,8 @@ export default function DetailScreen() {
               >
                 <Ionicons
                   name={isPlaying ? "stop" : "play"}
-                  size={18}
-                  color={isPlaying ? Colors.dark.background : Colors.dark.accent}
+                  size={16}
+                  color={isPlaying ? "#FFFFFF" : Colors.light.accent}
                 />
               </Pressable>
             </View>
@@ -273,7 +266,7 @@ export default function DetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
+    backgroundColor: Colors.light.background,
   },
   header: {
     flexDirection: "row",
@@ -294,7 +287,8 @@ const styles = StyleSheet.create({
   },
   flipHintText: {
     fontSize: 12,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
   },
   cardFace: {
     width: "100%",
@@ -303,26 +297,34 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   cardBack: {
-    backgroundColor: Colors.dark.surface,
+    backgroundColor: Colors.light.paper,
   },
   backOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(253, 251, 247, 0.7)",
   },
   backContent: {
     flex: 1,
     padding: 20,
     justifyContent: "center",
   },
+  backContentInner: {
+    backgroundColor: "rgba(255, 255, 200, 0.15)",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 200, 0.3)",
+  },
   backText: {
-    fontSize: 16,
-    fontFamily: "DancingScript_400Regular",
-    color: Colors.dark.accentLight,
-    lineHeight: 26,
+    fontSize: 18,
+    fontFamily: "Caveat_400Regular",
+    color: Colors.light.handwriting,
+    lineHeight: 28,
   },
   noTextLabel: {
     fontSize: 14,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
     textAlign: "center",
     fontStyle: "italic",
   },
@@ -332,15 +334,15 @@ const styles = StyleSheet.create({
     right: 12,
   },
   stampDecor: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: Colors.dark.accent,
+    borderColor: Colors.light.accent,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
-    opacity: 0.6,
+    opacity: 0.5,
   },
   dateRow: {
     flexDirection: "row",
@@ -352,27 +354,29 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
   },
   descriptionBox: {
     marginHorizontal: 24,
     marginBottom: 16,
     padding: 16,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 14,
+    backgroundColor: Colors.light.glassCard,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.glassBorderCard,
   },
   descriptionLabel: {
     fontSize: 10,
-    fontWeight: "700" as const,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textMuted,
     letterSpacing: 1.2,
     marginBottom: 8,
   },
   descriptionText: {
     fontSize: 14,
-    color: Colors.dark.textSecondary,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textSecondary,
     lineHeight: 20,
   },
   infoRow: {
@@ -388,15 +392,15 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: Colors.dark.surface,
+    backgroundColor: "rgba(255, 255, 255, 0.6)",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.slate200,
   },
   infoPillText: {
     fontSize: 12,
-    fontWeight: "600" as const,
-    color: Colors.dark.textSecondary,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.textSecondary,
   },
   infoArrow: {
     opacity: 0.4,
@@ -413,51 +417,52 @@ const styles = StyleSheet.create({
   },
   translatedLabel: {
     fontSize: 10,
-    fontWeight: "700" as const,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textMuted,
     letterSpacing: 1.2,
   },
   playBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.dark.accentDim,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.light.accentDim,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(212, 160, 83, 0.3)",
+    borderColor: "rgba(79, 70, 229, 0.2)",
   },
   playBtnActive: {
-    backgroundColor: Colors.dark.accent,
+    backgroundColor: Colors.light.accent,
+    borderColor: Colors.light.accent,
   },
   translatedTextContainer: {
     padding: 16,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 14,
+    backgroundColor: Colors.light.glassCard,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.glassBorderCard,
     minHeight: 80,
   },
   originalSection: {
     marginHorizontal: 24,
     padding: 16,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 14,
+    backgroundColor: Colors.light.glassCard,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.dark.border,
+    borderColor: Colors.light.glassBorderCard,
   },
   originalLabel: {
     fontSize: 10,
-    fontWeight: "700" as const,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.textMuted,
     letterSpacing: 1.2,
     marginBottom: 8,
   },
   originalText: {
     fontSize: 14,
-    color: Colors.dark.textSecondary,
+    fontFamily: "Caveat_400Regular",
+    color: Colors.light.textSecondary,
     lineHeight: 22,
-    fontStyle: "italic",
   },
   notFound: {
     flex: 1,
@@ -467,11 +472,12 @@ const styles = StyleSheet.create({
   },
   notFoundText: {
     fontSize: 16,
-    color: Colors.dark.textMuted,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
   },
   backLink: {
     fontSize: 14,
-    color: Colors.dark.accent,
-    fontWeight: "600" as const,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.accent,
   },
 });
