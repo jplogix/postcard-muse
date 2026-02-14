@@ -57,7 +57,7 @@ export default function GalleryScreen() {
               <Ionicons name="heart-outline" size={22} color={Colors.light.text} />
               <Text style={styles.brandText}>Postcard Muse</Text>
             </View>
-            <Pressable onPress={handleSettings} hitSlop={12} style={styles.headerIconBtn}>
+            <Pressable onPress={handleSettings} hitSlop={12} style={styles.headerIconBtn} testID="settings-button">
               <Feather name="settings" size={20} color={Colors.light.textSecondary} />
             </Pressable>
           </View>
@@ -90,6 +90,7 @@ export default function GalleryScreen() {
 
       <Pressable
         onPress={handleAdd}
+        testID="add-button"
         style={({ pressed }) => [
           styles.fab,
           { bottom: bottomInset + 24 },

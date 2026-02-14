@@ -2,20 +2,20 @@
 
 ## Overview
 
-Postcard Muse is a mobile application that serves as a digital gallery for physical postcards. Users photograph their postcards (front and back), and the app uses Google Gemini AI to extract handwritten text, detect the language, translate the message, and provide text-to-speech playback. The app features a premium dark UI with 3D flip card animations, particle scanning effects, and synchronized animated text highlighting during speech playback.
+Postcard Muse is a mobile application that serves as a digital gallery for physical postcards. Users photograph their postcards (front and back), and the app uses Google Gemini AI to extract handwritten text, detect the language, translate the message, and provide text-to-speech playback. The app features a light glassmorphism UI with animated mesh gradient backgrounds, 3D flip card animations, particle scanning effects, and synchronized animated text highlighting during speech playback.
 
 The project is a full-stack Expo + Express application. The Expo frontend handles the mobile UI and local data persistence, while the Express backend proxies AI requests to Google Gemini for postcard processing.
 
 ## Recent Changes (Feb 14, 2026)
 
-- Initial build of Postcard Muse app
-- Gallery home screen with grid layout and FAB
-- Add postcard flow with image picker and scanning animation with particle effects
-- AI-powered text extraction and translation via Gemini backend endpoint
-- 3D flip card animation on detail view
-- Synchronized word-by-word text animation with TTS audio playback
-- Settings screen with target language selection
-- Custom fonts: Playfair Display (branding), Dancing Script (handwriting)
+- Redesigned entire app from dark theme to light glassmorphism aesthetic matching web version
+- Added animated MeshGradientBackground with three floating blobs (purple, indigo, pink)
+- Replaced Playfair Display + Dancing Script fonts with Inter (UI) + Caveat (handwriting)
+- Updated all screens with glass panels (white blur), light borders, and soft shadows
+- Color palette: slate grays for text, indigo (#4F46E5) primary, pink (#EC4899) secondary
+- BlurView glass header on Gallery screen, paper-textured postcard backs
+- StatusBar set to "dark" for light background visibility
+- Updated particle colors in scanning animation to indigo/purple/pink/cyan
 
 ## User Preferences
 
@@ -31,10 +31,11 @@ User wants handwritten text animation and audio to be in sync as much as possibl
 - **Navigation**: Expo Router with a Stack navigator. Routes: home gallery (`index`), add postcard (`add`), postcard detail (`detail/[id]`), settings (`settings`)
 - **State Management**: React Context (`PostcardContext`) manages postcard collection and user settings
 - **Local Storage**: AsyncStorage for postcard metadata, Expo FileSystem for permanent image storage
-- **UI**: expo-image, expo-linear-gradient, expo-blur for dark theme. React Native Reanimated for 3D flip and particle animations. expo-haptics for tactile feedback
-- **Fonts**: Playfair Display (branding), Dancing Script (handwriting) via expo-font with ttf file requires
+- **UI**: expo-image, expo-linear-gradient, expo-blur for light glassmorphism. React Native Reanimated for 3D flip and particle animations. expo-haptics for tactile feedback
+- **Fonts**: Inter (UI text: 300Light, 400Regular, 500Medium, 600SemiBold), Caveat (handwriting: 400Regular, 500Medium) via expo-font
+- **Background**: MeshGradientBackground component with three animated blobs (blobPurple, blobIndigo, blobPink)
 - **TTS**: expo-speech with word-level timing estimation for synchronized text animation
-- **Scanning Animation**: Custom particle system with 24 animated particles (gold, amber, indigo, cyan) using Reanimated shared values
+- **Scanning Animation**: Custom particle system with 24 animated particles (indigo, purple, pink, cyan) using Reanimated shared values
 
 ### Backend (Express Server)
 
@@ -68,9 +69,13 @@ User wants handwritten text animation and audio to be in sync as much as possibl
 
 ### Color Palette
 
-Dark theme with indigo/amber tones:
-- Background: #0F0F1A
-- Surface: #1A1A2E
-- Accent (gold): #D4A053
-- Indigo: #6366F1
-- Particles: gold (#FFD700), amber (#F59E0B), indigo (#818CF8), cyan (#22D3EE)
+Light glassmorphism theme:
+- Background: #FAFAFA
+- Glass: rgba(255,255,255,0.65) with white blur
+- Glass Card: rgba(255,255,255,0.4)
+- Text: Slate grays (#0F172A, #64748B, #94A3B8)
+- Accent (indigo): #4F46E5
+- Secondary (pink): #EC4899
+- Particles: indigo (#818CF8), purple (#A78BFA), pink (#F472B6), cyan (#22D3EE)
+- Paper texture: #FDFBF7 for postcard backs
+- Blobs: purple (rgba(216,180,254,0.30)), indigo (rgba(199,210,254,0.30)), pink (rgba(251,207,232,0.30))
