@@ -39,6 +39,7 @@ export default function DetailScreen() {
   const [audioSource, setAudioSource] = useState<string | null>(null);
   const [audioDurationMs, setAudioDurationMs] = useState(0);
   const wordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingPlayRef = useRef(false);
 
   const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
@@ -48,6 +49,7 @@ export default function DetailScreen() {
     wordTimerRef.current = null;
     setIsPlaying(false);
     setCurrentWordIndex(-1);
+    pendingPlayRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -55,6 +57,14 @@ export default function DetailScreen() {
       if (wordTimerRef.current) clearInterval(wordTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (audioSource && pendingPlayRef.current) {
+      pendingPlayRef.current = false;
+      player.seekTo(0);
+      player.play();
+    }
+  }, [audioSource, player]);
 
   useEffect(() => {
     if (status.playing && !wordTimerRef.current && isPlaying) {
@@ -110,19 +120,21 @@ export default function DetailScreen() {
       const data = await response.json();
       const fullAudioUrl = new URL(data.audioUrl, baseUrl).toString();
       setAudioDurationMs(data.durationMs);
-      setAudioSource(fullAudioUrl);
       setIsLoadingAudio(false);
 
-      setTimeout(() => {
+      if (audioSource === fullAudioUrl) {
         player.seekTo(0);
         player.play();
-      }, 300);
+      } else {
+        pendingPlayRef.current = true;
+        setAudioSource(fullAudioUrl);
+      }
     } catch (err) {
       console.error("Piper TTS error:", err);
       setIsLoadingAudio(false);
       cleanup();
     }
-  }, [postcard, isPlaying, player, cleanup]);
+  }, [postcard, isPlaying, player, cleanup, audioSource]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;
