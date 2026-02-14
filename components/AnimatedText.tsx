@@ -4,7 +4,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withSpring,
   Easing,
+  interpolate,
 } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 
@@ -13,52 +15,50 @@ interface AnimatedWordProps {
   index: number;
   currentWordIndex: number;
   isPlaying: boolean;
-  totalWords: number;
 }
 
 function AnimatedWord({ word, index, currentWordIndex, isPlaying }: AnimatedWordProps) {
-  const opacity = useSharedValue(0.3);
-  const scale = useSharedValue(0.95);
-  const translateY = useSharedValue(3);
+  const progress = useSharedValue(0);
+  const highlight = useSharedValue(0);
 
   useEffect(() => {
     if (!isPlaying) {
-      opacity.value = withTiming(0.3, { duration: 300 });
-      scale.value = withTiming(0.95, { duration: 300 });
-      translateY.value = withTiming(3, { duration: 300 });
+      progress.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.quad) });
+      highlight.value = withTiming(0, { duration: 200 });
       return;
     }
 
-    if (index < currentWordIndex) {
-      opacity.value = withTiming(0.7, { duration: 200 });
-      scale.value = withTiming(1, { duration: 200 });
-      translateY.value = withTiming(0, { duration: 200 });
-    } else if (index === currentWordIndex) {
-      opacity.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.quad) });
-      scale.value = withTiming(1.06, { duration: 200, easing: Easing.out(Easing.back(1.5)) });
-      translateY.value = withTiming(-2, { duration: 200, easing: Easing.out(Easing.quad) });
+    if (index <= currentWordIndex) {
+      progress.value = withSpring(1, { damping: 14, stiffness: 120, mass: 0.8 });
     } else {
-      opacity.value = withTiming(0.3, { duration: 200 });
-      scale.value = withTiming(0.95, { duration: 200 });
-      translateY.value = withTiming(3, { duration: 200 });
+      progress.value = withTiming(0, { duration: 200 });
+    }
+
+    if (index === currentWordIndex) {
+      highlight.value = withTiming(1, { duration: 150 });
+    } else {
+      highlight.value = withTiming(0, { duration: 250 });
     }
   }, [currentWordIndex, isPlaying, index]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }, { translateY: translateY.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.4, 1]);
+    const translateY = interpolate(progress.value, [0, 1], [8, 0]);
+    const scale = interpolate(highlight.value, [0, 1], [1, 1.08]);
 
-  const isActive = isPlaying && index === currentWordIndex;
+    return {
+      opacity,
+      transform: [{ translateY }, { scale }],
+    };
+  });
+
+  const colorStyle = useAnimatedStyle(() => {
+    const color = highlight.value > 0.5 ? Colors.light.accent : Colors.light.slate700;
+    return { color };
+  });
 
   return (
-    <Animated.Text
-      style={[
-        styles.word,
-        animatedStyle,
-        isActive && styles.activeWord,
-      ]}
-    >
+    <Animated.Text style={[styles.word, animatedStyle, colorStyle]}>
       {word}{" "}
     </Animated.Text>
   );
@@ -80,7 +80,6 @@ export default function AnimatedText({ words, currentWordIndex, isPlaying }: Ani
           index={index}
           currentWordIndex={currentWordIndex}
           isPlaying={isPlaying}
-          totalWords={words.length}
         />
       ))}
     </View>
@@ -94,13 +93,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   word: {
-    fontSize: 18,
-    lineHeight: 30,
+    fontSize: 20,
+    lineHeight: 34,
     fontFamily: "Caveat_500Medium",
     color: Colors.light.slate700,
     letterSpacing: 0.3,
-  },
-  activeWord: {
-    color: Colors.light.accent,
   },
 });
