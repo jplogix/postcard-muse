@@ -17,19 +17,12 @@ import Colors from "@/constants/colors";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
-const NUM_STATIC_PARTICLES = 60;
 const NUM_TEXT_BLOCKS = 6;
+const NUM_SONAR_RINGS = 3;
 const IMAGE_SCALE = 1.35;
 const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
 const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
-
-const PARTICLE_COLORS = [
-  Colors.light.particleIndigo,
-  Colors.light.particlePurple,
-  Colors.light.particlePink,
-  Colors.light.particleCyan,
-  Colors.light.accentLight,
-];
+const SONAR_MAX = Math.max(CARD_WIDTH, CARD_HEIGHT) * 0.9;
 
 const BLOCK_COLORS = [
   "rgba(99, 102, 241, 0.5)",
@@ -40,17 +33,6 @@ const BLOCK_COLORS = [
   "rgba(167, 139, 250, 0.45)",
 ];
 
-interface ParticleConfig {
-  x: number;
-  y: number;
-  size: number;
-  color: string;
-  delay: number;
-  flickerDuration: number;
-  driftX: number;
-  driftY: number;
-}
-
 interface TextBlockConfig {
   x: number;
   y: number;
@@ -59,23 +41,6 @@ interface TextBlockConfig {
   color: string;
   delay: number;
   cycleDuration: number;
-}
-
-function generateParticleConfigs(count: number): ParticleConfig[] {
-  const configs: ParticleConfig[] = [];
-  for (let i = 0; i < count; i++) {
-    configs.push({
-      x: Math.random() * (CARD_WIDTH - 4) + 2,
-      y: Math.random() * (CARD_HEIGHT - 4) + 2,
-      size: 1.5 + Math.random() * 2,
-      color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
-      delay: Math.random() * 2000,
-      flickerDuration: 400 + Math.random() * 800,
-      driftX: (Math.random() - 0.5) * 12,
-      driftY: (Math.random() - 0.5) * 12,
-    });
-  }
-  return configs;
 }
 
 function generateTextBlockConfigs(count: number): TextBlockConfig[] {
@@ -100,74 +65,6 @@ function generateTextBlockConfigs(count: number): TextBlockConfig[] {
     });
   }
   return configs;
-}
-
-function StaticParticle({ config }: { config: ParticleConfig }) {
-  const opacity = useSharedValue(0);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-
-  useEffect(() => {
-    opacity.value = withDelay(
-      config.delay,
-      withRepeat(
-        withSequence(
-          withTiming(0.85, { duration: config.flickerDuration * 0.25, easing: Easing.out(Easing.quad) }),
-          withTiming(0.3, { duration: config.flickerDuration * 0.2 }),
-          withTiming(0.9, { duration: config.flickerDuration * 0.15, easing: Easing.out(Easing.quad) }),
-          withTiming(0, { duration: config.flickerDuration * 0.4, easing: Easing.in(Easing.quad) })
-        ),
-        -1,
-        false
-      )
-    );
-
-    translateX.value = withDelay(
-      config.delay,
-      withRepeat(
-        withTiming(config.driftX, { duration: config.flickerDuration, easing: Easing.inOut(Easing.quad) }),
-        -1,
-        true
-      )
-    );
-
-    translateY.value = withDelay(
-      config.delay,
-      withRepeat(
-        withTiming(config.driftY, { duration: config.flickerDuration, easing: Easing.inOut(Easing.quad) }),
-        -1,
-        true
-      )
-    );
-
-    return () => {
-      cancelAnimation(opacity);
-      cancelAnimation(translateX);
-      cancelAnimation(translateY);
-    };
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
-  }));
-
-  return (
-    <Animated.View
-      style={[
-        {
-          position: "absolute",
-          left: config.x,
-          top: config.y,
-          width: config.size,
-          height: config.size,
-          borderRadius: config.size / 2,
-          backgroundColor: config.color,
-        },
-        animatedStyle,
-      ]}
-    />
-  );
 }
 
 function TextBlockOutline({ config }: { config: TextBlockConfig }) {
@@ -237,6 +134,56 @@ function TextBlockOutline({ config }: { config: TextBlockConfig }) {
   );
 }
 
+function SonarRing({ index }: { index: number }) {
+  const progress = useSharedValue(0);
+  const delay = index * 1200;
+  const duration = NUM_SONAR_RINGS * 1200;
+
+  useEffect(() => {
+    progress.value = withDelay(
+      delay,
+      withRepeat(
+        withTiming(1, { duration, easing: Easing.out(Easing.quad) }),
+        -1,
+        false
+      )
+    );
+
+    return () => cancelAnimation(progress);
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const size = interpolate(progress.value, [0, 1], [0, SONAR_MAX]);
+    const opacity = interpolate(progress.value, [0, 0.15, 0.6, 1], [0, 0.35, 0.12, 0]);
+
+    return {
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      opacity,
+      transform: [
+        { translateX: -size / 2 },
+        { translateY: -size / 2 },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: "absolute",
+          left: CARD_WIDTH / 2,
+          top: CARD_HEIGHT / 2,
+          borderWidth: 1.5,
+          borderColor: "rgba(99, 102, 241, 0.5)",
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
 interface ScanningAnimationProps {
   imageUri: string;
   statusText: string;
@@ -250,8 +197,8 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const panY = useSharedValue(0);
   const glitchOpacity = useSharedValue(0);
 
-  const particleConfigs = useMemo(() => generateParticleConfigs(NUM_STATIC_PARTICLES), []);
   const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
+  const sonarIndices = useMemo(() => Array.from({ length: NUM_SONAR_RINGS }, (_, i) => i), []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
@@ -367,9 +314,9 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
           resizeMode="cover"
         />
 
-        <View style={styles.particlesContainer}>
-          {particleConfigs.map((config, i) => (
-            <StaticParticle key={`p${i}`} config={config} />
+        <View style={styles.overlayContainer}>
+          {sonarIndices.map((i) => (
+            <SonarRing key={`s${i}`} index={i} />
           ))}
           {textBlockConfigs.map((config, i) => (
             <TextBlockOutline key={`tb${i}`} config={config} />
@@ -438,7 +385,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  particlesContainer: {
+  overlayContainer: {
     ...StyleSheet.absoluteFillObject,
   },
   scanLine: {
