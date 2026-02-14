@@ -13,6 +13,8 @@ export interface Postcard {
   targetLanguage: string;
   description: string;
   words: string[];
+  audioPath?: string;
+  audioDurationMs?: number;
   createdAt: number;
 }
 
