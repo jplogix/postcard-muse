@@ -157,15 +157,20 @@ export default function DetailScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     replayOverlayOpacity.value = withTiming(0, { duration: 200 });
-    setIsPlaying(true);
     setHasPlayed(false);
     setCurrentWordIndex(-1);
     setIsMuted(false);
     player.volume = 1;
+    setIsPlaying(true);
 
     if (audioSource) {
-      player.seekTo(0);
-      player.play();
+      try {
+        player.seekTo(0);
+        setTimeout(() => player.play(), 50);
+      } catch (e) {
+        console.log("Replay seek error:", e);
+        player.play();
+      }
       return;
     }
 
