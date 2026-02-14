@@ -13,6 +13,14 @@ import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
+if (Platform.OS === "web" && typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (e) => {
+    if (e.reason?.message?.includes("timeout exceeded")) {
+      e.preventDefault();
+    }
+  });
+}
+
 function RootLayoutNav() {
   return (
     <Stack
