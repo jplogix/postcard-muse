@@ -1,0 +1,88 @@
+Prompt: Postcard Muse - Mobile App Recreation (Expo/Replit)
+You are an expert React Native and Expo developer. I want to build a mobile application called "Postcard Muse" for a hackathon using Expo on Replit.
+
+Core Concept
+"Postcard Muse" is a digital gallery for physical postcards. Users can scan (photograph) their postcards, and the app uses AI to:
+
+Digitize: Store the front and back images.
+Transcribe: Extract handwritten text functionality.
+Translate: Translate the text into a target language (e.g., English).
+Enhance: Provide a "Text-to-Speech" capability to read the message aloud.
+Interact: View postcards in a 3D flip animation style.
+Tech Stack Requirements
+Please scaffold the app using the following stack, optimized for Replit:
+
+Framework: Expo (Managed Workflow) with Expo Router for navigation.
+Styling: NativeWind (Tailwind CSS for React Native) to match the aesthetics of modern web apps.
+Language: TypeScript.
+AI: Google Gemini API (specifically gemini-1.5-flash) for Vision (text extraction) and Translation.
+Storage: Expo SQLite for metadata (text, dates, etc.) and dates/tags; Expo FileSystem to store the actual image files locally.
+UI Components: Use base React Native components styled with NativeWind.
+Animations: React Native Reanimated for the 3D card flip effect.
+TTS: Expo Speech for native text-to-speech.
+Features & Implementation Details
+1. Home Screen (Gallery)
+Display a grid of saved postcards.
+Each item shows the front image thumbnail.
+FAB (Floating Action Button) to add a new postcard.
+2. Add Postcard Flow
+Image Picker: Use expo-image-picker to allow taking photos or selecting from gallery (Front & Back).
+Processing: When images are selected:
+Call Gemini API with the image (base64).
+Prompt: "Extract the handwritten text and identify the language. Then translate it to [Target Language]."
+Store the Original Text, Translated Text, and Language.
+3. Postcard Detail View (The "Muse" Experience)
+Interaction: The core interaction is a flip animation. Tapping anywhere on the card should trigger a smooth 180-degree flip to reveal the back.
+Front Side: Displays the high-quality image of the postcard.
+Back Side:
+Option 1: The original back image.
+Option 2: A "digital" back with the extracted text rendered in a handwriting-style font for readability.
+Audio Player: prominent "Play" button to read the translated text aloud using expo-speech.
+UI Polish: Use heavy gradients and glassmorphism (via expo-blur or semi-transparent views) to match the premium "Muse" aesthetic.
+4. Settings & Data
+Preferences: Option to set default Target Language.
+Data Persistence:
+Use expo-sqlite to store metadata (text, translation, dates).
+Use expo-file-system to save image files permanently from cache.
+State Management: Use React Context or a simple state hook to manage the list of postcards, refreshing from SQLite on focus.
+Data Model (SQLite)
+Create a table postcards:
+
+sql
+CREATE TABLE IF NOT EXISTS postcards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  front_image_uri TEXT NOT NULL,
+  back_image_uri TEXT,
+  original_text TEXT,
+  translated_text TEXT,
+  target_language TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+UI/UX Guidelines
+Theme: Dark mode by default or system preference.
+Gradients: Use expo-linear-gradient for backgrounds to give it a rich, modern feel (Indigo/Amber tones from the original design).
+Fonts: Use expo-font to load a serif font for the "Muse" branding and a handwriting font for the back of the card.
+Special Instructions for Replit/Expo
+Dependencies: Ensure all packages are compatible with Expo Go (Managed Workflow).
+Environment: Provide a .env.example template for the Gemini API Key.
+Permissions: Handle Camera and Audio recording permissions gracefully with explanatory text if denied.
+Code Structure
+/app: Expo Router file-based routing.
+index.tsx: Gallery view.
+add.tsx: Camera/Image picker flow.
+[id].tsx: Detail view with flip animation.
+/components: Reusable UI components.
+PostcardCard.tsx: The flip card component.
+ThemedText.tsx: Typography components.
+/lib:
+db.ts: SQLite setup and repository pattern.
+
+gemini.ts
+: Service for Google Gemini API interactions.
+
+storage.ts
+: File system helpers.
+
+utils.ts
+: Common utilities.
+Please generate the initial project structure and key code files to get this running.
