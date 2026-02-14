@@ -43,6 +43,7 @@ export default function DetailScreen() {
     : null;
   const [audioSource, setAudioSource] = useState<string | null>(initialAudioUrl);
   const [audioDurationMs, setAudioDurationMs] = useState(postcard?.audioDurationMs || 0);
+  const wordTimingsRef = useRef<number[] | null>(null);
 
   const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
@@ -78,14 +79,37 @@ export default function DetailScreen() {
     const words = postcard?.words || [];
     if (words.length === 0) return;
     const duration = audioDurationMs || Math.max((postcard?.translatedText?.length || 20) * 65, 2000);
+    const timings = wordTimingsRef.current;
+
+    let cumulativeMs: number[] | null = null;
+    if (timings && timings.length === words.length) {
+      cumulativeMs = [];
+      let sum = 0;
+      for (let i = 0; i < timings.length; i++) {
+        sum += timings[i];
+        cumulativeMs.push(sum);
+      }
+    }
 
     const syncLoop = () => {
       const currentMs = (player as any).currentTime * 1000;
-      const progress = Math.min(currentMs / duration, 1);
-      const wordIdx = Math.min(Math.floor(progress * words.length), words.length - 1);
+
+      let wordIdx: number;
+      if (cumulativeMs) {
+        wordIdx = 0;
+        for (let i = 0; i < cumulativeMs.length; i++) {
+          if (currentMs >= (i === 0 ? 0 : cumulativeMs[i - 1])) {
+            wordIdx = i;
+          }
+        }
+      } else {
+        const progress = Math.min(currentMs / duration, 1);
+        wordIdx = Math.min(Math.floor(progress * words.length), words.length - 1);
+      }
+
       setCurrentWordIndex(wordIdx);
 
-      if (progress < 1) {
+      if (currentMs < duration) {
         syncFrameRef.current = requestAnimationFrame(syncLoop);
       }
     };
@@ -127,7 +151,7 @@ export default function DetailScreen() {
       const response = await globalThis.fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: postcard.translatedText }),
+        body: JSON.stringify({ text: postcard.translatedText, words: postcard.words }),
       });
 
       if (!response.ok) throw new Error("TTS request failed");
@@ -135,6 +159,9 @@ export default function DetailScreen() {
       const data = await response.json();
       const fullAudioUrl = new URL(data.audioUrl, baseUrl).toString();
       setAudioDurationMs(data.durationMs);
+      if (data.wordTimings) {
+        wordTimingsRef.current = data.wordTimings;
+      }
       setAudioSource(fullAudioUrl);
 
       if (updatePostcard) {

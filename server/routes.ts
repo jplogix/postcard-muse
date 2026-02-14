@@ -39,14 +39,52 @@ function getWavDurationMs(wavPath: string): number {
   return Math.round((dataSize / (sampleRate * channels * (bitDepth / 8))) * 1000);
 }
 
+function estimateSyllables(word: string): number {
+  const w = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (w.length <= 2) return 1;
+  let count = 0;
+  const vowels = "aeiouy";
+  let prevVowel = false;
+  for (let i = 0; i < w.length; i++) {
+    const isVowel = vowels.includes(w[i]);
+    if (isVowel && !prevVowel) count++;
+    prevVowel = isVowel;
+  }
+  if (w.endsWith("e") && count > 1) count--;
+  return Math.max(count, 1);
+}
+
+function addBreathingPauses(text: string): string {
+  return text
+    .replace(/([.!?])\s*/g, "$1 ... ")
+    .replace(/,\s*/g, ", .. ")
+    .replace(/;\s*/g, "; .. ")
+    .replace(/:\s*/g, ": .. ");
+}
+
+function computeWordTimings(words: string[], totalDurationMs: number): number[] {
+  const syllables = words.map(estimateSyllables);
+  const totalSyllables = syllables.reduce((a, b) => a + b, 0);
+  const pausePerWord = 30;
+  const totalPauseMs = pausePerWord * (words.length - 1);
+  const speechMs = Math.max(totalDurationMs - totalPauseMs, totalDurationMs * 0.7);
+
+  return words.map((_, i) => {
+    const wordDur = (syllables[i] / totalSyllables) * speechMs;
+    return Math.round(wordDur + (i < words.length - 1 ? pausePerWord : 0));
+  });
+}
+
 async function generatePiperTTS(text: string, outPath: string): Promise<number> {
   const { spawn } = require("node:child_process");
+  const pausedText = addBreathingPauses(text);
   const child = spawn("piper", [
     "--model", PIPER_MODEL,
     "--output_file", outPath,
     "--quiet",
+    "--sentence_silence", "0.3",
   ]);
-  child.stdin.write(text);
+  child.stdin.write(pausedText);
   child.stdin.end();
   await new Promise<void>((resolve, reject) => {
     child.on("close", (code: number) => code === 0 ? resolve() : reject(new Error(`Piper exited with code ${code}`)));
@@ -58,7 +96,7 @@ async function generatePiperTTS(text: string, outPath: string): Promise<number> 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts", async (req: Request, res: Response) => {
     try {
-      const { text } = req.body;
+      const { text, words } = req.body;
       if (!text) {
         return res.status(400).json({ error: "Text is required" });
       }
@@ -66,14 +104,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cacheKey = hashText(text);
       const wavPath = path.join(TTS_CACHE_DIR, `${cacheKey}.wav`);
 
+      let durationMs: number;
       if (fs.existsSync(wavPath)) {
-        const durationMs = getWavDurationMs(wavPath);
-        return res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs });
+        durationMs = getWavDurationMs(wavPath);
+      } else {
+        durationMs = await generatePiperTTS(text, wavPath);
       }
 
-      const durationMs = await generatePiperTTS(text, wavPath);
+      const wordTimings = words?.length
+        ? computeWordTimings(words, durationMs)
+        : undefined;
 
-      res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs });
+      res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs, wordTimings });
     } catch (error: any) {
       console.error("TTS error:", error?.message || error);
       res.status(500).json({ error: error.message || "TTS generation failed" });
