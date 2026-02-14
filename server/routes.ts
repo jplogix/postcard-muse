@@ -10,7 +10,78 @@ const ai = new GoogleGenAI({
   },
 });
 
+const directAi = process.env.GEMINI_API_KEY
+  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+  : null;
+
+function createWavBuffer(pcmData: Buffer, sampleRate = 24000, channels = 1, bitDepth = 16): Buffer {
+  const byteRate = sampleRate * channels * (bitDepth / 8);
+  const blockAlign = channels * (bitDepth / 8);
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + pcmData.length, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitDepth, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(pcmData.length, 40);
+  return Buffer.concat([header, pcmData]);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.post("/api/tts", async (req: Request, res: Response) => {
+    try {
+      const { text, voice } = req.body;
+      if (!text) {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      const ttsClient = directAi || ai;
+      const voiceName = voice || "Aoede";
+
+      const response = await ttsClient.models.generateContent({
+        model: "gemini-2.5-flash-preview-tts",
+        contents: [{ parts: [{ text: `Read this text naturally and warmly: ${text}` }] }],
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName,
+              },
+            },
+          },
+        } as any,
+      });
+
+      const candidate = response.candidates?.[0];
+      const part = candidate?.content?.parts?.[0];
+      const audioData = (part as any)?.inlineData?.data;
+
+      if (!audioData) {
+        return res.status(500).json({ error: "No audio generated" });
+      }
+
+      const pcmBuffer = Buffer.from(audioData, "base64");
+      const wavBuffer = createWavBuffer(pcmBuffer);
+
+      const durationMs = Math.round((pcmBuffer.length / (24000 * 2)) * 1000);
+
+      res.setHeader("Content-Type", "audio/wav");
+      res.setHeader("X-Audio-Duration-Ms", durationMs.toString());
+      res.send(wavBuffer);
+    } catch (error: any) {
+      console.error("TTS error:", error?.message || error);
+      res.status(500).json({ error: error.message || "TTS generation failed" });
+    }
+  });
+
   app.post("/api/process-postcard", async (req: Request, res: Response) => {
     try {
       const { frontImageBase64, backImageBase64, targetLanguage } = req.body;
