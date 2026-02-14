@@ -56,17 +56,17 @@ function estimateSyllables(word: string): number {
 
 function addBreathingPauses(text: string): string {
   return text
-    .replace(/([.!?])\s*/g, "$1 ... ")
-    .replace(/,\s*/g, ", .. ")
-    .replace(/;\s*/g, "; .. ")
-    .replace(/:\s*/g, ": .. ");
+    .replace(/([.!?])\s*/g, "$1 ..... ")
+    .replace(/,\s*/g, ", ... ")
+    .replace(/;\s*/g, "; ... ")
+    .replace(/:\s*/g, ": ... ");
 }
 
 function getPunctuationPauseMs(word: string): number {
   const trimmed = word.trimEnd();
   const last = trimmed[trimmed.length - 1];
-  if (".!?".includes(last)) return 300;
-  if (",;:".includes(last)) return 150;
+  if (".!?".includes(last)) return 500;
+  if (",;:".includes(last)) return 280;
   return 0;
 }
 
@@ -95,7 +95,7 @@ async function generatePiperTTS(text: string, outPath: string): Promise<number> 
     "--model", PIPER_MODEL,
     "--output_file", outPath,
     "--quiet",
-    "--sentence_silence", "0.3",
+    "--sentence_silence", "0.5",
   ]);
   child.stdin.write(pausedText);
   child.stdin.end();
