@@ -23,20 +23,17 @@ interface AnimatedWordProps {
 function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, afterPause }: AnimatedWordProps) {
   const progress = useSharedValue(0);
   const highlight = useSharedValue(0);
-  const fade = useSharedValue(1);
 
   useEffect(() => {
     if (hasPlayed && !isPlaying) {
       progress.value = withTiming(1, { duration: 200 });
       highlight.value = withTiming(0, { duration: 200 });
-      fade.value = withTiming(1, { duration: 300 });
       return;
     }
 
     if (!isPlaying && !hasPlayed) {
       progress.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.quad) });
       highlight.value = withTiming(0, { duration: 200 });
-      fade.value = withTiming(1, { duration: 200 });
       return;
     }
 
@@ -48,20 +45,8 @@ function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, aft
       } else {
         progress.value = withTiming(1, { duration: 150 });
       }
-
-      const lag = currentWordIndex - index;
-      if (lag > 8) {
-        fade.value = withTiming(0.35, { duration: 600, easing: Easing.out(Easing.quad) });
-      } else if (lag > 5) {
-        fade.value = withTiming(0.55, { duration: 500, easing: Easing.out(Easing.quad) });
-      } else if (lag > 3) {
-        fade.value = withTiming(0.75, { duration: 400, easing: Easing.out(Easing.quad) });
-      } else {
-        fade.value = withTiming(1, { duration: 250 });
-      }
     } else {
       progress.value = withTiming(0, { duration: 200 });
-      fade.value = withTiming(1, { duration: 200 });
     }
 
     if (index === currentWordIndex) {
@@ -75,9 +60,8 @@ function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, aft
   }, [currentWordIndex, isPlaying, hasPlayed, index, afterPause]);
 
   const animatedStyle = useAnimatedStyle(() => {
-    const baseOpacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.5, 1]);
-    const opacity = baseOpacity * fade.value;
-    const translateX = interpolate(progress.value, [0, 1], [4, 0]);
+    const opacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.5, 1]);
+    const translateX = interpolate(progress.value, [0, 1], [6, 0]);
     const scale = interpolate(highlight.value, [0, 1], [1, 1.06]);
 
     return {
