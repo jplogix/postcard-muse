@@ -14,8 +14,11 @@ const ai = new GoogleGenAI({
 });
 
 const PIPER_MODEL = path.resolve(process.cwd(), "server", "voices", "en_GB-alba-medium.onnx");
+const TTS_CACHE_DIR = path.join(os.tmpdir(), "piper-cache");
 
-const ttsCache = new Map<string, { wav: Buffer; durationMs: number }>();
+if (!fs.existsSync(TTS_CACHE_DIR)) {
+  fs.mkdirSync(TTS_CACHE_DIR, { recursive: true });
+}
 
 function hashText(text: string): string {
   let hash = 0;
@@ -27,33 +30,29 @@ function hashText(text: string): string {
   return Math.abs(hash).toString(36);
 }
 
-async function generatePiperTTS(text: string): Promise<{ wav: Buffer; durationMs: number }> {
-  const tmpFile = path.join(os.tmpdir(), `piper_${Date.now()}.wav`);
-  try {
-    const { spawn } = require("node:child_process");
-    const child = spawn("piper", [
-      "--model", PIPER_MODEL,
-      "--output_file", tmpFile,
-      "--quiet",
-    ]);
-    child.stdin.write(text);
-    child.stdin.end();
-    await new Promise<void>((resolve, reject) => {
-      child.on("close", (code: number) => code === 0 ? resolve() : reject(new Error(`Piper exited with code ${code}`)));
-      child.on("error", reject);
-    });
+function getWavDurationMs(wavPath: string): number {
+  const buf = fs.readFileSync(wavPath, { flag: "r" });
+  const dataSize = buf.readUInt32LE(40);
+  const sampleRate = buf.readUInt32LE(24);
+  const channels = buf.readUInt16LE(22);
+  const bitDepth = buf.readUInt16LE(34);
+  return Math.round((dataSize / (sampleRate * channels * (bitDepth / 8))) * 1000);
+}
 
-    const wavBuffer = fs.readFileSync(tmpFile);
-    const dataSize = wavBuffer.readUInt32LE(40);
-    const sampleRate = wavBuffer.readUInt32LE(24);
-    const channels = wavBuffer.readUInt16LE(22);
-    const bitDepth = wavBuffer.readUInt16LE(34);
-    const durationMs = Math.round((dataSize / (sampleRate * channels * (bitDepth / 8))) * 1000);
-
-    return { wav: wavBuffer, durationMs };
-  } finally {
-    try { fs.unlinkSync(tmpFile); } catch {}
-  }
+async function generatePiperTTS(text: string, outPath: string): Promise<number> {
+  const { spawn } = require("node:child_process");
+  const child = spawn("piper", [
+    "--model", PIPER_MODEL,
+    "--output_file", outPath,
+    "--quiet",
+  ]);
+  child.stdin.write(text);
+  child.stdin.end();
+  await new Promise<void>((resolve, reject) => {
+    child.on("close", (code: number) => code === 0 ? resolve() : reject(new Error(`Piper exited with code ${code}`)));
+    child.on("error", reject);
+  });
+  return getWavDurationMs(outPath);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -65,16 +64,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const cacheKey = hashText(text);
+      const wavPath = path.join(TTS_CACHE_DIR, `${cacheKey}.wav`);
 
-      if (ttsCache.has(cacheKey)) {
-        const cached = ttsCache.get(cacheKey)!;
-        return res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs: cached.durationMs });
+      if (fs.existsSync(wavPath)) {
+        const durationMs = getWavDurationMs(wavPath);
+        return res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs });
       }
 
-      const result = await generatePiperTTS(text);
-      ttsCache.set(cacheKey, result);
+      const durationMs = await generatePiperTTS(text, wavPath);
 
-      res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs: result.durationMs });
+      res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs });
     } catch (error: any) {
       console.error("TTS error:", error?.message || error);
       res.status(500).json({ error: error.message || "TTS generation failed" });
@@ -82,13 +81,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/tts-audio/:id", (req: Request, res: Response) => {
-    const cached = ttsCache.get(req.params.id as string);
-    if (!cached) {
+    const wavPath = path.join(TTS_CACHE_DIR, `${req.params.id}.wav`);
+    if (!fs.existsSync(wavPath)) {
       return res.status(404).json({ error: "Audio not found" });
     }
     res.setHeader("Content-Type", "audio/wav");
     res.setHeader("Cache-Control", "public, max-age=3600");
-    res.send(cached.wav);
+    res.sendFile(wavPath);
   });
 
   app.post("/api/process-postcard", async (req: Request, res: Response) => {

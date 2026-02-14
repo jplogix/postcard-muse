@@ -34,14 +34,16 @@ User wants handwritten text animation and audio to be in sync as much as possibl
 - **UI**: expo-image, expo-linear-gradient, expo-blur for light glassmorphism. React Native Reanimated for 3D flip and particle animations. expo-haptics for tactile feedback
 - **Fonts**: Inter (UI text: 300Light, 400Regular, 500Medium, 600SemiBold), Caveat (handwriting: 400Regular, 500Medium) via expo-font
 - **Background**: MeshGradientBackground component with three animated blobs (blobPurple, blobIndigo, blobPink)
-- **TTS**: expo-speech with word-level timing estimation for synchronized text animation
+- **TTS**: expo-audio for Piper TTS audio playback, expo-speech as fallback. Word-level timing estimation for synchronized text animation
 - **Scanning Animation**: Custom particle system with 24 animated particles (indigo, purple, pink, cyan) using Reanimated shared values
 
 ### Backend (Express Server)
 
 - **Runtime**: Express 5 on Node.js with TypeScript
 - **Main Endpoint**: `POST /api/process-postcard` - accepts base64 images, returns extracted text, translation, description, and word array
-- **AI**: `@google/genai` SDK via Replit AI Integrations (Gemini 2.5 Flash). No API key needed - billed to Replit credits
+- **TTS Endpoint**: `POST /api/tts` - generates speech using Piper TTS with Alba (en_GB) voice. Returns `{audioUrl, durationMs}`. Audio served via `GET /api/tts-audio/:id`
+- **TTS Engine**: Piper TTS (local, open-source neural TTS). Voice model: `en_GB-alba-medium.onnx` (61MB) stored in `server/voices/`. Audio cached to disk at `/tmp/piper-cache/`
+- **AI**: `@google/genai` SDK via Replit AI Integrations (Gemini 2.5 Flash) for postcard text extraction. No API key needed - billed to Replit credits
 - **Body Limit**: 50mb for base64 image payloads
 - **CORS**: Dynamic setup for Replit domains and localhost
 
