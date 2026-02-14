@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -10,6 +11,20 @@ import { PostcardProvider } from "@/lib/PostcardContext";
 import * as Font from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import Colors from "@/constants/colors";
+
+if (Platform.OS === "web" && typeof window !== "undefined") {
+  const origOnError = window.onerror;
+  window.onerror = function (msg) {
+    if (typeof msg === "string" && msg.includes("timeout exceeded")) return true;
+    if (origOnError) return origOnError.apply(this, arguments as any);
+    return false;
+  };
+  window.addEventListener("unhandledrejection", (e) => {
+    if (e.reason?.message?.includes?.("timeout exceeded")) {
+      e.preventDefault();
+    }
+  });
+}
 
 SplashScreen.preventAutoHideAsync();
 
