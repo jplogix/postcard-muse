@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 20,
     alignItems: "center",
-    minHeight: 60,
+    height: 80,
     justifyContent: "center",
   },
   jokeText: {
