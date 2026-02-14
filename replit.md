@@ -22,6 +22,10 @@ The project is a full-stack Expo + Express application. The Expo frontend handle
 - After playback finishes, a gradient overlay (transparent→white) fades in over the text with a centered "Replay" button
 - Replay overlay fades away when replay is pressed, then audio and text animation restart
 - Exclude-address toggle in Settings; AI prompt conditionally skips mailing addresses
+- Redesigned add screen with dedicated Camera and Upload buttons for each image slot, showing postcard frame guide with 16:10 aspect ratio
+- Both camera and upload support native crop editing; selected images show retake chips (camera/upload icons) at bottom-right corner
+- AnimatedText now fades earlier words (opacity reduces as lag from current word increases: 3+, 5+, 8+ words back)
+- After-pause words use softer spring (damping 18, stiffness 80, mass 1.1) with 80ms delay for more natural pacing
 
 ## User Preferences
 
