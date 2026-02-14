@@ -6,8 +6,13 @@ import {
   Pressable,
   ScrollView,
   Platform,
-  Switch,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  interpolateColor,
+} from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
@@ -17,16 +22,73 @@ import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 
+const TRACK_W = 50;
+const TRACK_H = 30;
+const THUMB_SIZE = 26;
+const THUMB_MARGIN = 2;
+
+function CustomToggle({ value, onValueChange }: { value: boolean; onValueChange: (v: boolean) => void }) {
+  const trackStyle = useAnimatedStyle(() => {
+    const bg = interpolateColor(
+      withTiming(value ? 1 : 0, { duration: 200, easing: Easing.out(Easing.quad) }),
+      [0, 1],
+      [Colors.light.slate200, Colors.light.accent]
+    );
+    return { backgroundColor: bg };
+  });
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: withTiming(
+          value ? TRACK_W - THUMB_SIZE - THUMB_MARGIN * 2 : 0,
+          { duration: 200, easing: Easing.out(Easing.quad) }
+        ),
+      },
+    ],
+  }));
+
+  return (
+    <Pressable onPress={() => onValueChange(!value)}>
+      <Animated.View style={[styles.toggleTrack, trackStyle]}>
+        <Animated.View style={[styles.toggleThumb, thumbStyle]} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 const LANGUAGES = [
-  "English", "Spanish", "French", "German", "Italian", "Portuguese",
-  "Japanese", "Korean", "Chinese", "Arabic", "Russian", "Hindi",
-  "Dutch", "Swedish", "Turkish", "Polish", "Vietnamese", "Thai",
-  "Indonesian", "Greek",
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Italian",
+  "Portuguese",
+  "Japanese",
+  "Korean",
+  "Chinese",
+  "Arabic",
+  "Russian",
+  "Hindi",
+  "Dutch",
+  "Swedish",
+  "Turkish",
+  "Polish",
+  "Vietnamese",
+  "Thai",
+  "Indonesian",
+  "Greek",
 ];
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { targetLanguage, setTargetLanguage, excludeAddress, setExcludeAddress, postcards } = usePostcards();
+  const {
+    targetLanguage,
+    setTargetLanguage,
+    excludeAddress,
+    setExcludeAddress,
+    postcards,
+  } = usePostcards();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -47,7 +109,10 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset + 32 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomInset + 32 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.statsRow}>
@@ -82,7 +147,11 @@ export default function SettingsScreen() {
                 ]}
               >
                 {isSelected && (
-                  <Ionicons name="checkmark-circle" size={14} color={Colors.light.accent} />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={14}
+                    color={Colors.light.accent}
+                  />
                 )}
                 <Text
                   style={[
@@ -97,7 +166,9 @@ export default function SettingsScreen() {
           })}
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>PROCESSING OPTIONS</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>
+          PROCESSING OPTIONS
+        </Text>
         <View style={styles.optionRow}>
           <View style={styles.optionInfo}>
             <Text style={styles.optionLabel}>Exclude addresses</Text>
@@ -105,22 +176,20 @@ export default function SettingsScreen() {
               Skip mailing addresses when extracting postcard text
             </Text>
           </View>
-          <Switch
+          <CustomToggle
             value={excludeAddress}
             onValueChange={(val) => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setExcludeAddress(val);
             }}
-            trackColor={{ false: Colors.light.slate200, true: "rgba(79, 70, 229, 0.4)" }}
-            thumbColor={excludeAddress ? Colors.light.accent : "#FFFFFF"}
           />
         </View>
 
         <View style={styles.aboutSection}>
           <Text style={styles.aboutTitle}>About Postcard Muse</Text>
           <Text style={styles.aboutText}>
-            A digital gallery for your physical postcards. Scan, transcribe, translate, and listen
-            to handwritten messages from around the world.
+            A digital gallery for your physical postcards. Scan, transcribe,
+            translate, and listen to handwritten messages from around the world.
           </Text>
           <Text style={styles.versionText}>Version 1.0.0</Text>
         </View>
@@ -273,5 +342,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Inter_300Light",
     color: Colors.light.textMuted,
+  },
+  toggleTrack: {
+    width: TRACK_W,
+    height: TRACK_H,
+    borderRadius: TRACK_H / 2,
+    padding: THUMB_MARGIN,
+    justifyContent: "center",
+  },
+  toggleThumb: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });
