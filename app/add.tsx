@@ -25,6 +25,7 @@ import LoadingJokes from "@/components/LoadingJokes";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const POSTCARD_ASPECT: [number, number] = [16, 10];
 
 type ProcessingState = "idle" | "scanning" | "extracting" | "translating" | "saving" | "done" | "error";
 
@@ -55,6 +56,7 @@ export default function AddPostcardScreen() {
         mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: true,
+        aspect: POSTCARD_ASPECT,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -80,6 +82,7 @@ export default function AddPostcardScreen() {
       const result = await ImagePicker.launchCameraAsync({
         quality: 0.8,
         allowsEditing: true,
+        aspect: POSTCARD_ASPECT,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -94,22 +97,6 @@ export default function AddPostcardScreen() {
       console.error("Camera error:", err);
     }
   }, []);
-
-  const showImageOptions = useCallback((side: "front" | "back") => {
-    if (Platform.OS === "web") {
-      pickImage(side);
-      return;
-    }
-    Alert.alert(
-      `${side === "front" ? "Front" : "Back"} of Postcard`,
-      "Choose an option",
-      [
-        { text: "Take Photo", onPress: () => takePhoto(side) },
-        { text: "Choose from Gallery", onPress: () => pickImage(side) },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
-  }, [pickImage, takePhoto]);
 
   const processPostcard = useCallback(async () => {
     if (!backImage) {
@@ -218,6 +205,75 @@ export default function AddPostcardScreen() {
     );
   }
 
+  const renderImageSlot = (
+    side: "front" | "back",
+    image: string | null,
+    setImage: (v: string | null) => void,
+    icon: string,
+    iconColor: string,
+    title: string,
+    subtitle: string,
+  ) => {
+    if (image) {
+      return (
+        <View style={styles.imagePickerBox}>
+          <Image source={{ uri: image }} style={styles.previewImage} contentFit="cover" />
+          <Pressable
+            onPress={() => setImage(null)}
+            style={styles.removeBtn}
+            hitSlop={8}
+          >
+            <Ionicons name="close-circle" size={24} color={Colors.light.error} />
+          </Pressable>
+          <View style={styles.retakeRow}>
+            <Pressable
+              onPress={() => takePhoto(side)}
+              style={({ pressed }) => [styles.retakeChip, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="camera" size={14} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              onPress={() => pickImage(side)}
+              style={({ pressed }) => [styles.retakeChip, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="image" size={14} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.imagePickerBox}>
+        <View style={styles.placeholderContent}>
+          <View style={styles.iconCircle}>
+            <Feather name={icon as any} size={22} color={iconColor} />
+          </View>
+          <Text style={styles.placeholderText}>{title}</Text>
+          <Text style={styles.placeholderSub}>{subtitle}</Text>
+          <View style={styles.inputBtns}>
+            {Platform.OS !== "web" && (
+              <Pressable
+                onPress={() => takePhoto(side)}
+                style={({ pressed }) => [styles.inputBtn, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
+              >
+                <Ionicons name="camera" size={18} color={Colors.light.accent} />
+                <Text style={styles.inputBtnText}>Camera</Text>
+              </Pressable>
+            )}
+            <Pressable
+              onPress={() => pickImage(side)}
+              style={({ pressed }) => [styles.inputBtn, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
+            >
+              <Ionicons name="image" size={18} color={Colors.light.accent} />
+              <Text style={styles.inputBtnText}>Upload</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
       <MeshGradientBackground />
@@ -235,62 +291,10 @@ export default function AddPostcardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.sectionLabel}>TEXT SIDE</Text>
-        <Pressable
-          onPress={() => showImageOptions("back")}
-          style={({ pressed }) => [styles.imagePickerBox, pressed && { opacity: 0.85 }]}
-        >
-          {backImage ? (
-            <Image source={{ uri: backImage }} style={styles.previewImage} contentFit="cover" />
-          ) : (
-            <View style={styles.placeholderContent}>
-              <View style={styles.iconCircle}>
-                <Feather name="mail" size={22} color={Colors.light.accent} />
-              </View>
-              <Text style={styles.placeholderText}>Add text side image</Text>
-              <Text style={styles.placeholderSub}>The side with the handwritten message</Text>
-            </View>
-          )}
-          {backImage && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                setBackImage(null);
-              }}
-              style={styles.removeBtn}
-            >
-              <Ionicons name="close-circle" size={24} color={Colors.light.error} />
-            </Pressable>
-          )}
-        </Pressable>
+        {renderImageSlot("back", backImage, setBackImage, "mail", Colors.light.accent, "Add text side image", "The side with the handwritten message")}
 
         <Text style={[styles.sectionLabel, { marginTop: 24 }]}>PICTURE SIDE (optional)</Text>
-        <Pressable
-          onPress={() => showImageOptions("front")}
-          style={({ pressed }) => [styles.imagePickerBox, styles.backBox, pressed && { opacity: 0.85 }]}
-        >
-          {frontImage ? (
-            <Image source={{ uri: frontImage }} style={styles.previewImage} contentFit="cover" />
-          ) : (
-            <View style={styles.placeholderContent}>
-              <View style={styles.iconCircle}>
-                <Feather name="image" size={22} color={Colors.light.indigo} />
-              </View>
-              <Text style={styles.placeholderText}>Add picture side</Text>
-              <Text style={styles.placeholderSub}>The front image of the postcard</Text>
-            </View>
-          )}
-          {frontImage && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                setFrontImage(null);
-              }}
-              style={styles.removeBtn}
-            >
-              <Ionicons name="close-circle" size={24} color={Colors.light.error} />
-            </Pressable>
-          )}
-        </Pressable>
+        {renderImageSlot("front", frontImage, setFrontImage, "image", Colors.light.indigo, "Add picture side", "The front image of the postcard")}
 
         {processing === "error" && (
           <View style={styles.errorBanner}>
@@ -374,7 +378,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.glassBorderCard,
     borderStyle: "dashed",
   },
-  backBox: {},
   previewImage: {
     width: "100%",
     height: "100%",
@@ -383,7 +386,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
   },
   iconCircle: {
     width: 48,
@@ -392,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 2,
     borderWidth: 1,
     borderColor: Colors.light.slate200,
   },
@@ -405,11 +408,48 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     color: Colors.light.textMuted,
+    marginBottom: 4,
+  },
+  inputBtns: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  inputBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 12,
+    backgroundColor: "rgba(79, 70, 229, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(79, 70, 229, 0.15)",
+  },
+  inputBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.accent,
   },
   removeBtn: {
     position: "absolute",
     top: 8,
     right: 8,
+  },
+  retakeRow: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    flexDirection: "row",
+    gap: 6,
+  },
+  retakeChip: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorBanner: {
     flexDirection: "row",
