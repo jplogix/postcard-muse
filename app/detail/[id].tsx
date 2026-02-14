@@ -352,6 +352,7 @@ export default function DetailScreen() {
                 currentWordIndex={currentWordIndex}
                 isPlaying={isPlaying}
                 hasPlayed={hasPlayed}
+                wordTimings={wordTimingsRef.current}
               />
             </View>
           </View>

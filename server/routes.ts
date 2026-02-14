@@ -62,16 +62,29 @@ function addBreathingPauses(text: string): string {
     .replace(/:\s*/g, ": .. ");
 }
 
+function getPunctuationPauseMs(word: string): number {
+  const trimmed = word.trimEnd();
+  const last = trimmed[trimmed.length - 1];
+  if (".!?".includes(last)) return 300;
+  if (",;:".includes(last)) return 150;
+  return 0;
+}
+
 function computeWordTimings(words: string[], totalDurationMs: number): number[] {
   const syllables = words.map(estimateSyllables);
   const totalSyllables = syllables.reduce((a, b) => a + b, 0);
-  const pausePerWord = 30;
-  const totalPauseMs = pausePerWord * (words.length - 1);
-  const speechMs = Math.max(totalDurationMs - totalPauseMs, totalDurationMs * 0.7);
+
+  const punctPauses = words.map((w, i) => i < words.length - 1 ? getPunctuationPauseMs(w) : 0);
+  const totalPunctPauseMs = punctPauses.reduce((a, b) => a + b, 0);
+
+  const gapPerWord = 20;
+  const totalGapMs = gapPerWord * Math.max(words.length - 1, 0);
+  const speechMs = Math.max(totalDurationMs - totalPunctPauseMs - totalGapMs, totalDurationMs * 0.5);
 
   return words.map((_, i) => {
     const wordDur = (syllables[i] / totalSyllables) * speechMs;
-    return Math.round(wordDur + (i < words.length - 1 ? pausePerWord : 0));
+    const gap = i < words.length - 1 ? gapPerWord : 0;
+    return Math.round(wordDur + punctPauses[i] + gap);
   });
 }
 

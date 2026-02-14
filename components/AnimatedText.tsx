@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSpring,
+  withDelay,
   Easing,
   interpolate,
 } from "react-native-reanimated";
@@ -16,9 +17,10 @@ interface AnimatedWordProps {
   currentWordIndex: number;
   isPlaying: boolean;
   hasPlayed: boolean;
+  afterPause: boolean;
 }
 
-function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed }: AnimatedWordProps) {
+function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed, afterPause }: AnimatedWordProps) {
   const progress = useSharedValue(0);
   const highlight = useSharedValue(0);
 
@@ -36,17 +38,24 @@ function AnimatedWord({ word, index, currentWordIndex, isPlaying, hasPlayed }: A
     }
 
     if (index <= currentWordIndex) {
-      progress.value = withSpring(1, { damping: 14, stiffness: 120, mass: 0.8 });
+      if (afterPause && index === currentWordIndex) {
+        progress.value = withDelay(60, withSpring(1, { damping: 16, stiffness: 90, mass: 1 }));
+      } else {
+        progress.value = withSpring(1, { damping: 14, stiffness: 120, mass: 0.8 });
+      }
     } else {
       progress.value = withTiming(0, { duration: 200 });
     }
 
     if (index === currentWordIndex) {
-      highlight.value = withTiming(1, { duration: 150 });
+      const highlightDur = afterPause ? 200 : 150;
+      highlight.value = afterPause
+        ? withDelay(60, withTiming(1, { duration: highlightDur }))
+        : withTiming(1, { duration: highlightDur });
     } else {
       highlight.value = withTiming(0, { duration: 250 });
     }
-  }, [currentWordIndex, isPlaying, hasPlayed, index]);
+  }, [currentWordIndex, isPlaying, hasPlayed, index, afterPause]);
 
   const animatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(progress.value, [0, 0.3, 1], [0, 0.4, 1]);
@@ -76,9 +85,19 @@ interface AnimatedTextProps {
   currentWordIndex: number;
   isPlaying: boolean;
   hasPlayed: boolean;
+  wordTimings?: number[] | null;
 }
 
-export default function AnimatedText({ words, currentWordIndex, isPlaying, hasPlayed }: AnimatedTextProps) {
+export default function AnimatedText({ words, currentWordIndex, isPlaying, hasPlayed, wordTimings }: AnimatedTextProps) {
+  const pauseFlags = useMemo(() => {
+    return words.map((_, i) => {
+      if (i === 0) return false;
+      const prev = words[i - 1].trimEnd();
+      const lastChar = prev[prev.length - 1];
+      return ".!?,;:".includes(lastChar);
+    });
+  }, [words]);
+
   return (
     <View style={styles.container}>
       {words.map((word, index) => (
@@ -89,6 +108,7 @@ export default function AnimatedText({ words, currentWordIndex, isPlaying, hasPl
           currentWordIndex={currentWordIndex}
           isPlaying={isPlaying}
           hasPlayed={hasPlayed}
+          afterPause={pauseFlags[index]}
         />
       ))}
     </View>
