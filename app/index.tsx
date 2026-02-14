@@ -56,13 +56,16 @@ export default function GalleryScreen() {
           <View style={styles.header}>
             <View style={styles.brandRow}>
               <View style={{ transform: [{ rotate: "-8deg" }] }}>
-                <Svg width={26} height={26} viewBox="0 0 16 16">
+                <Svg width={32} height={26} viewBox="-6 0 22 16">
                   <Defs>
                     <SvgGradient id="postcardGrad" x1="0" y1="0" x2="1" y2="1">
                       <Stop offset="0" stopColor={Colors.light.accent} />
                       <Stop offset="1" stopColor={Colors.light.pink} />
                     </SvgGradient>
                   </Defs>
+                  <Path stroke={Colors.light.accent} strokeWidth="0.8" strokeLinecap="round" opacity="0.5" d="M-1.5 5.5h-3" />
+                  <Path stroke={Colors.light.accent} strokeWidth="0.8" strokeLinecap="round" opacity="0.4" d="M-2 8h-2.5" />
+                  <Path stroke={Colors.light.accent} strokeWidth="0.8" strokeLinecap="round" opacity="0.3" d="M-1.5 10.5h-2" />
                   <Path fill="url(#postcardGrad)" d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm6 2.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0m3.5.878c1.482-1.42 4.795 1.392 0 4.622c-4.795-3.23-1.482-6.043 0-4.622M2 5.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5" />
                 </Svg>
               </View>
