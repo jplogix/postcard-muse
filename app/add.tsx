@@ -17,6 +17,8 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as Crypto from "expo-crypto";
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { BlurView } from "expo-blur";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import { saveImagePermanently, imageToBase64, Postcard } from "@/lib/storage";
@@ -271,18 +273,36 @@ export default function AddPostcardScreen() {
             {Platform.OS !== "web" && (
               <Pressable
                 onPress={() => takePhoto(side)}
-                style={({ pressed }) => [styles.inputBtn, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
+                style={({ pressed }) => [pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
               >
-                <Ionicons name="camera" size={18} color={Colors.light.accent} />
-                <Text style={styles.inputBtnText}>Camera</Text>
+                {isLiquidGlassAvailable() ? (
+                  <GlassView style={styles.glassBtn} tintColor={Colors.light.accent}>
+                    <Ionicons name="camera" size={18} color={Colors.light.accent} />
+                    <Text style={styles.glassBtnText}>Camera</Text>
+                  </GlassView>
+                ) : (
+                  <BlurView intensity={40} tint="light" style={styles.glassBtn}>
+                    <Ionicons name="camera" size={18} color={Colors.light.accent} />
+                    <Text style={styles.glassBtnText}>Camera</Text>
+                  </BlurView>
+                )}
               </Pressable>
             )}
             <Pressable
               onPress={() => pickImage(side)}
-              style={({ pressed }) => [styles.inputBtn, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
+              style={({ pressed }) => [pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
             >
-              <Ionicons name="image" size={18} color={Colors.light.accent} />
-              <Text style={styles.inputBtnText}>Upload</Text>
+              {isLiquidGlassAvailable() ? (
+                <GlassView style={styles.glassBtn} tintColor={Colors.light.accent}>
+                  <Ionicons name="image" size={18} color={Colors.light.accent} />
+                  <Text style={styles.glassBtnText}>Upload</Text>
+                </GlassView>
+              ) : (
+                <BlurView intensity={40} tint="light" style={styles.glassBtn}>
+                  <Ionicons name="image" size={18} color={Colors.light.accent} />
+                  <Text style={styles.glassBtnText}>Upload</Text>
+                </BlurView>
+              )}
             </Pressable>
           </View>
         </View>
@@ -431,18 +451,19 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 4,
   },
-  inputBtn: {
+  glassBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 12,
-    backgroundColor: "rgba(79, 70, 229, 0.08)",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "rgba(255, 255, 255, 0.45)",
     borderWidth: 1,
-    borderColor: "rgba(79, 70, 229, 0.15)",
+    borderColor: "rgba(79, 70, 229, 0.18)",
   },
-  inputBtnText: {
+  glassBtnText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
     color: Colors.light.accent,
