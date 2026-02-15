@@ -44,6 +44,7 @@ export default function DetailScreen() {
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [isMuted, setIsMuted] = useState(false);
   const syncFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const seekingRef = useRef(false);
 
   const baseUrl = getApiUrl();
   const initialAudioUrl = postcard?.audioPath
@@ -78,6 +79,7 @@ export default function DetailScreen() {
 
   const resetPlayback = useCallback(() => {
     stopSync();
+    seekingRef.current = false;
     setIsPlaying(false);
     setHasPlayed(false);
     setCurrentWordIndex(-1);
@@ -89,6 +91,9 @@ export default function DetailScreen() {
   }, [stopSync]);
 
   useEffect(() => {
+    if (isPlaying && status.playing && seekingRef.current) {
+      seekingRef.current = false;
+    }
     if (!isPlaying || !status.playing) return;
     const words = postcard?.words || [];
     if (words.length === 0) return;
@@ -133,7 +138,7 @@ export default function DetailScreen() {
   }, [status.playing, isPlaying, audioDurationMs, postcard, player, stopSync]);
 
   useEffect(() => {
-    if (isPlaying && !status.playing && status.currentTime > 0) {
+    if (isPlaying && !status.playing && status.currentTime > 0 && !seekingRef.current) {
       finishPlayback();
     }
   }, [status.playing, status.currentTime, isPlaying, finishPlayback]);
@@ -165,10 +170,15 @@ export default function DetailScreen() {
 
     if (audioSource) {
       try {
+        seekingRef.current = true;
         player.seekTo(0);
-        setTimeout(() => player.play(), 50);
+        setTimeout(() => {
+          seekingRef.current = false;
+          player.play();
+        }, 150);
       } catch (e) {
         console.log("Replay seek error:", e);
+        seekingRef.current = false;
         player.play();
       }
       return;
