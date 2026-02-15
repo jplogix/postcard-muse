@@ -1,0 +1,75 @@
+You are a senior React Native and Expo graphics engineer.
+
+Generate a production-ready React Native component in TypeScript for an AI-style image scanning animation that runs ONLY on mobile (iOS and Android) using Expo.
+
+IMPORTANT:
+- This must work inside an Expo managed workflow.
+- Do NOT use React Three Fiber.
+- Do NOT assume DOM or web APIs.
+- Use expo-gl and expo-three with raw Three.js.
+- Optimize for mobile performance.
+
+Technical Requirements:
+
+1. Use GLView from expo-gl to create the WebGL context.
+2. Use expo-three’s Renderer to render a Three.js scene.
+3. Accept a prop:
+   imageUrl: string
+4. Load the image texture using Three.js TextureLoader.
+5. Render a full-screen plane with a custom ShaderMaterial.
+6. Write custom GLSL vertex and fragment shaders.
+7. Animate using a uniform `uTime` updated inside a requestAnimationFrame loop.
+8. Call gl.endFrameEXP() properly after rendering.
+
+AI SCANNING EFFECT REQUIREMENTS:
+
+Create a futuristic AI scanning effect that includes:
+
+• A vertical scanning band moving smoothly from bottom to top.
+• Bright cyan/blue neon glow where the band passes.
+• Soft bloom-like glow boost (fake bloom inside shader).
+• Subtle horizontal UV distortion inside the scan band.
+• Light grid overlay behind or blended with the image.
+• Slight flicker noise inside the band to simulate “AI analysis”.
+• Smoothstep-based band falloff.
+• Looping animation.
+
+Performance Constraints (Mobile Optimized):
+
+• Avoid heavy postprocessing.
+• Avoid large geometry counts.
+• Use a single plane mesh.
+• Avoid dynamic allocations in render loop.
+• Use mediump precision in fragment shader.
+• Ensure texture is properly sized and not reloaded per frame.
+• Cleanly dispose resources on unmount.
+
+Structure:
+
+- Functional component named `ImageScanner`
+- Uses useRef for time
+- Contains onContextCreate function
+- Creates scene, orthographic camera, plane geometry
+- Creates ShaderMaterial with uniforms:
+    uTexture
+    uTime
+- Proper animation loop
+- Proper cleanup (cancel animation frame on unmount)
+
+Code Quality:
+
+- Fully typed TypeScript.
+- Clear comments explaining shader math.
+- Clean formatting.
+- No pseudo code.
+- Must be copy-paste runnable in an Expo project.
+
+Extra polish:
+
+Add configurable props (optional but preferred):
+- scanSpeed?: number
+- glowColor?: [number, number, number]
+
+Deliver a single complete file component.
+No explanation text.
+Only output the final code.
