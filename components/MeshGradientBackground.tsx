@@ -43,21 +43,20 @@ function Blob({ color, size, top, left }: {
     ).start();
   }, []);
 
-  const blobSize = size * 1.4;
-  const offset = (blobSize - size) / 2;
-
-  return (
-    <Animated.View
-      style={{
-        position: "absolute",
-        top: top - offset,
-        left: left - offset,
-        width: blobSize,
-        height: blobSize,
-        transform: [{ translateX }, { translateY }, { scale }],
-      }}
-    >
-      {Platform.OS === "web" ? (
+  if (Platform.OS === "web") {
+    const blobSize = size * 1.4;
+    const offset = (blobSize - size) / 2;
+    return (
+      <Animated.View
+        style={{
+          position: "absolute",
+          top: top - offset,
+          left: left - offset,
+          width: blobSize,
+          height: blobSize,
+          transform: [{ translateX }, { translateY }, { scale }],
+        }}
+      >
         <View
           style={[
             StyleSheet.absoluteFill,
@@ -83,24 +82,24 @@ function Blob({ color, size, top, left }: {
             style={StyleSheet.absoluteFill}
           />
         </View>
-      ) : (
-        <BlurView
-          intensity={80}
-          tint="default"
-          experimentalBlurMethod="dimezisBlurView"
-          style={[StyleSheet.absoluteFill, { borderRadius: blobSize / 2, overflow: "hidden" }]}
-        >
-          <View
-            style={{
-              ...StyleSheet.absoluteFillObject,
-              borderRadius: blobSize / 2,
-              backgroundColor: color,
-              opacity: 0.3,
-            }}
-          />
-        </BlurView>
-      )}
-    </Animated.View>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        top,
+        left,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        opacity: 0.45,
+        transform: [{ translateX }, { translateY }, { scale }],
+      }}
+    />
   );
 }
 
@@ -125,6 +124,14 @@ export default function MeshGradientBackground() {
         top={SCREEN_HEIGHT * 0.5}
         left={SCREEN_WIDTH * 0.1}
       />
+      {Platform.OS !== "web" && (
+        <BlurView
+          intensity={90}
+          tint="default"
+          experimentalBlurMethod="dimezisBlurView"
+          style={StyleSheet.absoluteFill}
+        />
+      )}
     </View>
   );
 }
