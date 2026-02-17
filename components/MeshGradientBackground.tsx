@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { View, Animated, StyleSheet, Dimensions, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -42,38 +43,62 @@ function Blob({ color, size, top, left }: {
     ).start();
   }, []);
 
-  const webBlurStyle = Platform.OS === "web" ? { filter: `blur(${size * 0.35}px)` } : {};
+  const blobSize = size * 1.4;
+  const offset = (blobSize - size) / 2;
 
   return (
     <Animated.View
-      style={[
-        {
-          position: "absolute",
-          top,
-          left,
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          overflow: "hidden",
-          transform: [{ translateX }, { translateY }, { scale }],
-        },
-        webBlurStyle as any,
-      ]}
+      style={{
+        position: "absolute",
+        top: top - offset,
+        left: left - offset,
+        width: blobSize,
+        height: blobSize,
+        transform: [{ translateX }, { translateY }, { scale }],
+      }}
     >
-      <LinearGradient
-        colors={[color + "00", color + "50", color + "70", color + "50", color + "00"]}
-        locations={[0, 0.2, 0.5, 0.8, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={[color + "00", color + "40", color + "60", color + "40", color + "00"]}
-        locations={[0, 0.2, 0.5, 0.8, 1]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={StyleSheet.absoluteFill}
-      />
+      {Platform.OS === "web" ? (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              borderRadius: blobSize / 2,
+              overflow: "hidden",
+              filter: `blur(${size * 0.35}px)`,
+            } as any,
+          ]}
+        >
+          <LinearGradient
+            colors={[color + "00", color + "50", color + "70", color + "50", color + "00"]}
+            locations={[0, 0.2, 0.5, 0.8, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={[color + "00", color + "40", color + "60", color + "40", color + "00"]}
+            locations={[0, 0.2, 0.5, 0.8, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      ) : (
+        <BlurView
+          intensity={80}
+          tint="default"
+          style={[StyleSheet.absoluteFill, { borderRadius: blobSize / 2, overflow: "hidden" }]}
+        >
+          <View
+            style={{
+              ...StyleSheet.absoluteFillObject,
+              borderRadius: blobSize / 2,
+              backgroundColor: color,
+              opacity: 0.3,
+            }}
+          />
+        </BlurView>
+      )}
     </Animated.View>
   );
 }
