@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import { View, Animated, StyleSheet, Dimensions, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const RING_COUNT = 8;
 
 function Blob({ color, size, top, left }: {
   color: string;
@@ -43,26 +44,40 @@ function Blob({ color, size, top, left }: {
     ).start();
   }, []);
 
-  const blobSize = size * 1.4;
-  const offset = (blobSize - size) / 2;
+  const outerSize = size * 1.6;
+  const offsetX = left - (outerSize - size) / 2;
+  const offsetY = top - (outerSize - size) / 2;
 
-  return (
-    <Animated.View
-      style={{
-        position: "absolute",
-        top: top - offset,
-        left: left - offset,
-        width: blobSize,
-        height: blobSize,
-        transform: [{ translateX }, { translateY }, { scale }],
-      }}
-    >
-      {Platform.OS === "web" ? (
+  const rings = useMemo(() => {
+    const result = [];
+    for (let i = 0; i < RING_COUNT; i++) {
+      const t = i / (RING_COUNT - 1);
+      const ringScale = 0.25 + t * 0.75;
+      const ringSize = outerSize * ringScale;
+      const ringOffset = (outerSize - ringSize) / 2;
+      const opacity = 0.35 * (1 - t * t);
+      result.push({ ringSize, ringOffset, opacity, key: i });
+    }
+    return result;
+  }, [outerSize]);
+
+  if (Platform.OS === "web") {
+    return (
+      <Animated.View
+        style={{
+          position: "absolute",
+          top: offsetY,
+          left: offsetX,
+          width: outerSize,
+          height: outerSize,
+          transform: [{ translateX }, { translateY }, { scale }],
+        }}
+      >
         <View
           style={[
             StyleSheet.absoluteFill,
             {
-              borderRadius: blobSize / 2,
+              borderRadius: outerSize / 2,
               overflow: "hidden",
               filter: `blur(${size * 0.35}px)`,
             } as any,
@@ -83,22 +98,36 @@ function Blob({ color, size, top, left }: {
             style={StyleSheet.absoluteFill}
           />
         </View>
-      ) : (
-        <BlurView
-          intensity={80}
-          tint="default"
-          style={[StyleSheet.absoluteFill, { borderRadius: blobSize / 2, overflow: "hidden" }]}
-        >
-          <View
-            style={{
-              ...StyleSheet.absoluteFillObject,
-              borderRadius: blobSize / 2,
-              backgroundColor: color,
-              opacity: 0.3,
-            }}
-          />
-        </BlurView>
-      )}
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        top: offsetY,
+        left: offsetX,
+        width: outerSize,
+        height: outerSize,
+        transform: [{ translateX }, { translateY }, { scale }],
+      }}
+    >
+      {rings.map((ring) => (
+        <View
+          key={ring.key}
+          style={{
+            position: "absolute",
+            top: ring.ringOffset,
+            left: ring.ringOffset,
+            width: ring.ringSize,
+            height: ring.ringSize,
+            borderRadius: ring.ringSize / 2,
+            backgroundColor: color,
+            opacity: ring.opacity,
+          }}
+        />
+      ))}
     </Animated.View>
   );
 }
