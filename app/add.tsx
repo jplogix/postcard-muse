@@ -281,7 +281,7 @@ export default function AddPostcardScreen() {
                     <Text style={styles.glassBtnText}>Camera</Text>
                   </GlassView>
                 ) : (
-                  <BlurView intensity={40} tint="light" style={styles.glassBtn}>
+                  <BlurView intensity={40} tint="light" experimentalBlurMethod="dimezisBlurView" style={styles.glassBtn}>
                     <Ionicons name="camera" size={18} color={Colors.light.accent} />
                     <Text style={styles.glassBtnText}>Camera</Text>
                   </BlurView>
@@ -298,7 +298,7 @@ export default function AddPostcardScreen() {
                   <Text style={styles.glassBtnText}>Upload</Text>
                 </GlassView>
               ) : (
-                <BlurView intensity={40} tint="light" style={styles.glassBtn}>
+                <BlurView intensity={40} tint="light" experimentalBlurMethod="dimezisBlurView" style={styles.glassBtn}>
                   <Ionicons name="image" size={18} color={Colors.light.accent} />
                   <Text style={styles.glassBtnText}>Upload</Text>
                 </BlurView>
