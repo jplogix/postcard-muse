@@ -87,6 +87,7 @@ function Blob({ color, size, top, left }: {
         <BlurView
           intensity={80}
           tint="default"
+          experimentalBlurMethod="dimezisBlurView"
           style={[StyleSheet.absoluteFill, { borderRadius: blobSize / 2, overflow: "hidden" }]}
         >
           <View
