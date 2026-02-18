@@ -22,8 +22,8 @@ import { getApiUrl } from "@/lib/query-client";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const MIN_CROP = 60;
-const HANDLE_SIZE = 40;
-const HANDLE_HIT = HANDLE_SIZE + 20;
+const HANDLE_SIZE = 56;
+const HANDLE_HIT = HANDLE_SIZE + 24;
 
 interface ImageCropperProps {
   imageUri: string;
@@ -611,17 +611,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   handleInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: "#FFFFFF",
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: Colors.light.accent,
   },
   handleInnerPerspective: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderColor: "#22D3EE",
   },
   bottomBar: {
