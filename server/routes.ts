@@ -5,6 +5,7 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { GoogleGenAI } from "@google/genai";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import sharp from "sharp";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
@@ -125,6 +126,59 @@ async function generateElevenLabsTTS(text: string, outPath: string): Promise<num
   return estimateMp3DurationMs(outPath);
 }
 
+function computeHomography(
+  src: [number, number][],
+  dst: [number, number][]
+): number[] {
+  const A: number[][] = [];
+  for (let i = 0; i < 4; i++) {
+    const [sx, sy] = src[i];
+    const [dx, dy] = dst[i];
+    A.push([sx, sy, 1, 0, 0, 0, -dx * sx, -dx * sy, dx]);
+    A.push([0, 0, 0, sx, sy, 1, -dy * sx, -dy * sy, dy]);
+  }
+
+  const n = 9;
+  const m = 8;
+  const M = A.map((row) => [...row]);
+
+  for (let col = 0; col < m; col++) {
+    let maxRow = col;
+    let maxVal = Math.abs(M[col][col]);
+    for (let row = col + 1; row < m; row++) {
+      if (Math.abs(M[row][col]) > maxVal) {
+        maxVal = Math.abs(M[row][col]);
+        maxRow = row;
+      }
+    }
+    [M[col], M[maxRow]] = [M[maxRow], M[col]];
+
+    const pivot = M[col][col];
+    if (Math.abs(pivot) < 1e-12) continue;
+
+    for (let j = col; j < n; j++) M[col][j] /= pivot;
+
+    for (let row = 0; row < m; row++) {
+      if (row === col) continue;
+      const factor = M[row][col];
+      for (let j = col; j < n; j++) {
+        M[row][j] -= factor * M[col][j];
+      }
+    }
+  }
+
+  const h = new Array(9);
+  h[8] = 1;
+  for (let i = 7; i >= 0; i--) {
+    h[i] = M[i][8];
+    for (let j = i + 1; j < 8; j++) {
+      h[i] -= M[i][j] * h[j];
+    }
+  }
+
+  return h;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts", async (req: Request, res: Response) => {
     try {
@@ -162,6 +216,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "public, max-age=3600");
     res.sendFile(mp3Path);
+  });
+
+  app.post("/api/perspective-crop", async (req: Request, res: Response) => {
+    try {
+      const { imageBase64, corners, sourceWidth, sourceHeight } = req.body;
+      if (!imageBase64 || !corners || corners.length !== 4) {
+        return res.status(400).json({ error: "Image and 4 corners required" });
+      }
+
+      const imgBuf = Buffer.from(imageBase64, "base64");
+      const meta = await sharp(imgBuf).metadata();
+      const w = meta.width || sourceWidth;
+      const h = meta.height || sourceHeight;
+
+      const tl = corners[0];
+      const tr = corners[1];
+      const br = corners[2];
+      const bl = corners[3];
+
+      const topEdge = Math.sqrt((tr.x - tl.x) ** 2 + (tr.y - tl.y) ** 2);
+      const bottomEdge = Math.sqrt((br.x - bl.x) ** 2 + (br.y - bl.y) ** 2);
+      const leftEdge = Math.sqrt((bl.x - tl.x) ** 2 + (bl.y - tl.y) ** 2);
+      const rightEdge = Math.sqrt((br.x - tr.x) ** 2 + (br.y - tr.y) ** 2);
+
+      const outW = Math.round(Math.max(topEdge, bottomEdge));
+      const outH = Math.round(Math.max(leftEdge, rightEdge));
+
+      const srcCorners: [number, number][] = [
+        [tl.x, tl.y],
+        [tr.x, tr.y],
+        [br.x, br.y],
+        [bl.x, bl.y],
+      ];
+      const dstCorners: [number, number][] = [
+        [0, 0],
+        [outW, 0],
+        [outW, outH],
+        [0, outH],
+      ];
+
+      const Hinv = computeHomography(dstCorners, srcCorners);
+
+      const { data: rawPixels, info } = await sharp(imgBuf)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const srcW = info.width;
+      const srcH = info.height;
+      const channels = info.channels;
+
+      const outBuf = Buffer.alloc(outW * outH * channels);
+
+      for (let oy = 0; oy < outH; oy++) {
+        for (let ox = 0; ox < outW; ox++) {
+          const denom = Hinv[6] * ox + Hinv[7] * oy + Hinv[8];
+          const sx = (Hinv[0] * ox + Hinv[1] * oy + Hinv[2]) / denom;
+          const sy = (Hinv[3] * ox + Hinv[4] * oy + Hinv[5]) / denom;
+
+          const x0 = Math.floor(sx);
+          const y0 = Math.floor(sy);
+          const x1 = x0 + 1;
+          const y1 = y0 + 1;
+          const fx = sx - x0;
+          const fy = sy - y0;
+
+          if (x0 >= 0 && x1 < srcW && y0 >= 0 && y1 < srcH) {
+            const outIdx = (oy * outW + ox) * channels;
+            for (let c = 0; c < channels; c++) {
+              const v00 = rawPixels[(y0 * srcW + x0) * channels + c];
+              const v10 = rawPixels[(y0 * srcW + x1) * channels + c];
+              const v01 = rawPixels[(y1 * srcW + x0) * channels + c];
+              const v11 = rawPixels[(y1 * srcW + x1) * channels + c];
+              const top = v00 + (v10 - v00) * fx;
+              const bot = v01 + (v11 - v01) * fx;
+              outBuf[outIdx + c] = Math.round(top + (bot - top) * fy);
+            }
+          }
+        }
+      }
+
+      const resultBuf = await sharp(outBuf, {
+        raw: { width: outW, height: outH, channels },
+      })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+
+      const resultBase64 = resultBuf.toString("base64");
+      res.json({ imageBase64: resultBase64, width: outW, height: outH });
+    } catch (error: any) {
+      console.error("Perspective crop error:", error);
+      res.status(500).json({ error: error.message || "Perspective crop failed" });
+    }
   });
 
   app.post("/api/process-postcard", async (req: Request, res: Response) => {

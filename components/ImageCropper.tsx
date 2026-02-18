@@ -9,18 +9,21 @@ import {
   Text,
   GestureResponderEvent,
   PanResponderGestureState,
+  ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as FileSystem from "expo-file-system";
 import Colors from "@/constants/colors";
+import { getApiUrl } from "@/lib/query-client";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const MIN_CROP = 60;
-const HANDLE_SIZE = 36;
-const HANDLE_HIT = HANDLE_SIZE + 16;
+const HANDLE_SIZE = 40;
+const HANDLE_HIT = HANDLE_SIZE + 20;
 
 interface ImageCropperProps {
   imageUri: string;
@@ -30,7 +33,10 @@ interface ImageCropperProps {
   onCancel: () => void;
 }
 
-type DragTarget = "tl" | "tr" | "bl" | "br" | "body" | null;
+type Corner = { x: number; y: number };
+type Corners = [Corner, Corner, Corner, Corner];
+type DragTarget = 0 | 1 | 2 | 3 | "body" | null;
+type CropMode = "crop" | "perspective";
 
 export default function ImageCropper({
   imageUri,
@@ -61,46 +67,45 @@ export default function ImageCropper({
 
   const scale = imageWidth / displayW;
 
-  const [crop, setCrop] = useState({
-    x: 0,
-    y: 0,
-    w: displayW,
-    h: displayH,
-  });
+  const [mode, setMode] = useState<CropMode>("crop");
+  const [applying, setApplying] = useState(false);
 
-  const cropRef = useRef(crop);
-  cropRef.current = crop;
+  const [corners, setCorners] = useState<Corners>([
+    { x: 0, y: 0 },
+    { x: displayW, y: 0 },
+    { x: displayW, y: displayH },
+    { x: 0, y: displayH },
+  ]);
+
+  const cornersRef = useRef(corners);
+  cornersRef.current = corners;
 
   const dragTarget = useRef<DragTarget>(null);
-  const dragStart = useRef({ x: 0, y: 0, cx: 0, cy: 0, cw: 0, ch: 0 });
+  const dragStart = useRef<{ corners: Corners; px: number; py: number }>({
+    corners: [...corners] as Corners,
+    px: 0,
+    py: 0,
+  });
 
-  const hitTest = useCallback(
+  const clamp = (v: number, min: number, max: number) =>
+    Math.max(min, Math.min(max, v));
+
+  const hitTestCorner = useCallback(
     (px: number, py: number): DragTarget => {
-      const c = cropRef.current;
-      const corners: { key: DragTarget; x: number; y: number }[] = [
-        { key: "tl", x: c.x, y: c.y },
-        { key: "tr", x: c.x + c.w, y: c.y },
-        { key: "bl", x: c.x, y: c.y + c.h },
-        { key: "br", x: c.x + c.w, y: c.y + c.h },
-      ];
-      for (const corner of corners) {
+      const c = cornersRef.current;
+      for (let i = 0; i < 4; i++) {
         if (
-          Math.abs(px - corner.x) < HANDLE_HIT / 2 &&
-          Math.abs(py - corner.y) < HANDLE_HIT / 2
+          Math.abs(px - c[i].x) < HANDLE_HIT / 2 &&
+          Math.abs(py - c[i].y) < HANDLE_HIT / 2
         ) {
-          return corner.key;
+          return i as 0 | 1 | 2 | 3;
         }
       }
-      if (px >= c.x && px <= c.x + c.w && py >= c.y && py <= c.y + c.h) {
-        return "body";
-      }
+      if (isInsideQuad(px, py, c)) return "body";
       return null;
     },
     []
   );
-
-  const clamp = (v: number, min: number, max: number) =>
-    Math.max(min, Math.min(max, v));
 
   const panResponder = useMemo(
     () =>
@@ -110,102 +115,170 @@ export default function ImageCropper({
         onPanResponderGrant: (e: GestureResponderEvent) => {
           const px = e.nativeEvent.locationX;
           const py = e.nativeEvent.locationY;
-          dragTarget.current = hitTest(px, py);
-          const c = cropRef.current;
-          dragStart.current = { x: px, y: py, cx: c.x, cy: c.y, cw: c.w, ch: c.h };
+          dragTarget.current = hitTestCorner(px, py);
+          dragStart.current = {
+            corners: cornersRef.current.map((c) => ({ ...c })) as Corners,
+            px,
+            py,
+          };
         },
-        onPanResponderMove: (_: GestureResponderEvent, g: PanResponderGestureState) => {
+        onPanResponderMove: (
+          _: GestureResponderEvent,
+          g: PanResponderGestureState
+        ) => {
           const target = dragTarget.current;
-          if (!target) return;
+          if (target === null) return;
 
           const s = dragStart.current;
           const dx = g.dx;
           const dy = g.dy;
 
-          let nx = s.cx;
-          let ny = s.cy;
-          let nw = s.cw;
-          let nh = s.ch;
-
           if (target === "body") {
-            nx = clamp(s.cx + dx, 0, displayW - s.cw);
-            ny = clamp(s.cy + dy, 0, displayH - s.ch);
-          } else if (target === "tl") {
-            const newX = clamp(s.cx + dx, 0, s.cx + s.cw - MIN_CROP);
-            const newY = clamp(s.cy + dy, 0, s.cy + s.ch - MIN_CROP);
-            nw = s.cw + (s.cx - newX);
-            nh = s.ch + (s.cy - newY);
-            nx = newX;
-            ny = newY;
-          } else if (target === "tr") {
-            nw = clamp(s.cw + dx, MIN_CROP, displayW - s.cx);
-            const newY = clamp(s.cy + dy, 0, s.cy + s.ch - MIN_CROP);
-            nh = s.ch + (s.cy - newY);
-            ny = newY;
-          } else if (target === "bl") {
-            const newX = clamp(s.cx + dx, 0, s.cx + s.cw - MIN_CROP);
-            nw = s.cw + (s.cx - newX);
-            nx = newX;
-            nh = clamp(s.ch + dy, MIN_CROP, displayH - s.cy);
-          } else if (target === "br") {
-            nw = clamp(s.cw + dx, MIN_CROP, displayW - s.cx);
-            nh = clamp(s.ch + dy, MIN_CROP, displayH - s.cy);
+            const moved = s.corners.map((c) => ({
+              x: clamp(c.x + dx, 0, displayW),
+              y: clamp(c.y + dy, 0, displayH),
+            })) as Corners;
+            setCorners(moved);
+            return;
           }
 
-          setCrop({ x: nx, y: ny, w: nw, h: nh });
+          const idx = target as number;
+
+          if (mode === "perspective") {
+            const newCorners = s.corners.map((c) => ({ ...c })) as Corners;
+            newCorners[idx] = {
+              x: clamp(s.corners[idx].x + dx, 0, displayW),
+              y: clamp(s.corners[idx].y + dy, 0, displayH),
+            };
+            setCorners(newCorners);
+          } else {
+            const newCorners = s.corners.map((c) => ({ ...c })) as Corners;
+            const nx = clamp(s.corners[idx].x + dx, 0, displayW);
+            const ny = clamp(s.corners[idx].y + dy, 0, displayH);
+
+            if (idx === 0) {
+              newCorners[0] = { x: nx, y: ny };
+              newCorners[1] = { x: newCorners[1].x, y: ny };
+              newCorners[3] = { x: nx, y: newCorners[3].y };
+            } else if (idx === 1) {
+              newCorners[1] = { x: nx, y: ny };
+              newCorners[0] = { x: newCorners[0].x, y: ny };
+              newCorners[2] = { x: nx, y: newCorners[2].y };
+            } else if (idx === 2) {
+              newCorners[2] = { x: nx, y: ny };
+              newCorners[1] = { x: nx, y: newCorners[1].y };
+              newCorners[3] = { x: newCorners[3].x, y: ny };
+            } else {
+              newCorners[3] = { x: nx, y: ny };
+              newCorners[0] = { x: nx, y: newCorners[0].y };
+              newCorners[2] = { x: newCorners[2].x, y: ny };
+            }
+            setCorners(newCorners);
+          }
         },
         onPanResponderRelease: () => {
           dragTarget.current = null;
         },
       }),
-    [displayW, displayH, hitTest]
+    [displayW, displayH, hitTestCorner, mode]
   );
 
   const handleConfirm = useCallback(async () => {
-    const c = cropRef.current;
-    const originX = Math.round(c.x * scale);
-    const originY = Math.round(c.y * scale);
-    const width = Math.round(c.w * scale);
-    const height = Math.round(c.h * scale);
+    setApplying(true);
+    const c = cornersRef.current;
 
-    const safeW = Math.min(width, imageWidth - originX);
-    const safeH = Math.min(height, imageHeight - originY);
+    const isPerspective =
+      mode === "perspective" && !isAxisAligned(c);
 
     try {
-      const result = await manipulateAsync(
-        imageUri,
-        [
-          {
-            crop: {
-              originX: Math.max(0, originX),
-              originY: Math.max(0, originY),
-              width: Math.max(1, safeW),
-              height: Math.max(1, safeH),
-            },
-          },
-        ],
-        { compress: 0.85, format: SaveFormat.JPEG }
-      );
-      onCropDone(result.uri, result.width, result.height);
+      if (isPerspective) {
+        const srcPoints = c.map((pt) => ({
+          x: Math.round(pt.x * scale),
+          y: Math.round(pt.y * scale),
+        }));
+
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: "base64" as any,
+        });
+
+        const apiUrl = getApiUrl();
+        const url = new URL("/api/perspective-crop", apiUrl);
+
+        const resp = await fetch(url.toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: base64,
+            corners: srcPoints,
+            sourceWidth: imageWidth,
+            sourceHeight: imageHeight,
+          }),
+        });
+
+        if (!resp.ok) {
+          throw new Error("Perspective crop failed");
+        }
+
+        const data = await resp.json();
+        const resultBase64 = data.imageBase64;
+        const resultW = data.width;
+        const resultH = data.height;
+
+        const fileUri =
+          (FileSystem as any).cacheDirectory + "perspective_crop_" + Date.now() + ".jpg";
+        await FileSystem.writeAsStringAsync(fileUri, resultBase64, {
+          encoding: "base64" as any,
+        });
+
+        setApplying(false);
+        onCropDone(fileUri, resultW, resultH);
+      } else {
+        const minX = Math.min(c[0].x, c[3].x);
+        const maxX = Math.max(c[1].x, c[2].x);
+        const minY = Math.min(c[0].y, c[1].y);
+        const maxY = Math.max(c[2].y, c[3].y);
+
+        const originX = Math.max(0, Math.round(minX * scale));
+        const originY = Math.max(0, Math.round(minY * scale));
+        const w = Math.min(
+          Math.round((maxX - minX) * scale),
+          imageWidth - originX
+        );
+        const h = Math.min(
+          Math.round((maxY - minY) * scale),
+          imageHeight - originY
+        );
+
+        const result = await manipulateAsync(
+          imageUri,
+          [{ crop: { originX, originY, width: Math.max(1, w), height: Math.max(1, h) } }],
+          { compress: 0.85, format: SaveFormat.JPEG }
+        );
+
+        setApplying(false);
+        onCropDone(result.uri, result.width, result.height);
+      }
     } catch (err) {
       console.error("Crop error:", err);
+      setApplying(false);
       onCropDone(imageUri, imageWidth, imageHeight);
     }
-  }, [imageUri, imageWidth, imageHeight, scale, onCropDone]);
+  }, [imageUri, imageWidth, imageHeight, scale, onCropDone, mode]);
 
-  const renderHandle = (x: number, y: number) => (
-    <View
-      style={[
-        styles.handle,
-        {
-          left: x - HANDLE_SIZE / 2,
-          top: y - HANDLE_SIZE / 2,
-        },
-      ]}
-    >
-      <View style={styles.handleInner} />
-    </View>
-  );
+  const resetCorners = useCallback(() => {
+    setCorners([
+      { x: 0, y: 0 },
+      { x: displayW, y: 0 },
+      { x: displayW, y: displayH },
+      { x: 0, y: displayH },
+    ]);
+  }, [displayW, displayH]);
+
+  const toggleMode = useCallback(() => {
+    setMode((m) => (m === "crop" ? "perspective" : "crop"));
+  }, []);
+
+  const quadPath = `M ${corners[0].x} ${corners[0].y} L ${corners[1].x} ${corners[1].y} L ${corners[2].x} ${corners[2].y} L ${corners[3].x} ${corners[3].y} Z`;
 
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
@@ -213,9 +286,56 @@ export default function ImageCropper({
         <Pressable onPress={onCancel} hitSlop={12}>
           <Ionicons name="close" size={24} color="#FFFFFF" />
         </Pressable>
-        <Text style={styles.headerTitle}>Crop Image</Text>
-        <Pressable onPress={handleConfirm} hitSlop={12}>
-          <Ionicons name="checkmark" size={26} color={Colors.light.accent} />
+        <View style={styles.modeToggle}>
+          <Pressable
+            onPress={() => setMode("crop")}
+            style={[
+              styles.modeBtn,
+              mode === "crop" && styles.modeBtnActive,
+            ]}
+          >
+            <Ionicons
+              name="crop"
+              size={15}
+              color={mode === "crop" ? "#FFFFFF" : "#999"}
+            />
+            <Text
+              style={[
+                styles.modeBtnText,
+                mode === "crop" && styles.modeBtnTextActive,
+              ]}
+            >
+              Crop
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setMode("perspective")}
+            style={[
+              styles.modeBtn,
+              mode === "perspective" && styles.modeBtnActive,
+            ]}
+          >
+            <Ionicons
+              name="scan-outline"
+              size={15}
+              color={mode === "perspective" ? "#FFFFFF" : "#999"}
+            />
+            <Text
+              style={[
+                styles.modeBtnText,
+                mode === "perspective" && styles.modeBtnTextActive,
+              ]}
+            >
+              Perspective
+            </Text>
+          </Pressable>
+        </View>
+        <Pressable onPress={handleConfirm} hitSlop={12} disabled={applying}>
+          {applying ? (
+            <ActivityIndicator size="small" color={Colors.light.accent} />
+          ) : (
+            <Ionicons name="checkmark" size={26} color={Colors.light.accent} />
+          )}
         </Pressable>
       </View>
 
@@ -237,57 +357,65 @@ export default function ImageCropper({
           contentFit="cover"
         />
 
-        <View style={styles.dimOverlay} pointerEvents="none">
-          <View style={[styles.dimTop, { height: crop.y }]} />
-          <View style={[styles.dimMiddle, { top: crop.y, height: crop.h }]}>
-            <View style={[styles.dimSide, { width: crop.x }]} />
-            <View style={{ width: crop.w, height: crop.h }} />
-            <View
-              style={[
-                styles.dimSide,
-                { width: displayW - crop.x - crop.w },
-              ]}
-            />
+        {mode === "crop" ? (
+          <View style={styles.dimOverlay} pointerEvents="none">
+            {renderRectDim(corners, displayW, displayH)}
           </View>
+        ) : (
+          <View style={styles.dimOverlay} pointerEvents="none">
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.45)" }]} />
+          </View>
+        )}
+
+        {mode === "crop" && (
           <View
             style={[
-              styles.dimBottom,
-              { height: displayH - crop.y - crop.h },
+              styles.cropBorder,
+              {
+                left: Math.min(corners[0].x, corners[3].x),
+                top: Math.min(corners[0].y, corners[1].y),
+                width: Math.max(corners[1].x, corners[2].x) - Math.min(corners[0].x, corners[3].x),
+                height: Math.max(corners[2].y, corners[3].y) - Math.min(corners[0].y, corners[1].y),
+              },
             ]}
-          />
-        </View>
+            pointerEvents="none"
+          >
+            <View style={styles.gridLineH1} />
+            <View style={styles.gridLineH2} />
+            <View style={styles.gridLineV1} />
+            <View style={styles.gridLineV2} />
+          </View>
+        )}
 
-        <View
-          style={[
-            styles.cropBorder,
-            {
-              left: crop.x,
-              top: crop.y,
-              width: crop.w,
-              height: crop.h,
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.gridLineH1} />
-          <View style={styles.gridLineH2} />
-          <View style={styles.gridLineV1} />
-          <View style={styles.gridLineV2} />
-        </View>
+        {mode === "perspective" && (
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {renderQuadEdges(corners)}
+          </View>
+        )}
 
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          {renderHandle(crop.x, crop.y)}
-          {renderHandle(crop.x + crop.w, crop.y)}
-          {renderHandle(crop.x, crop.y + crop.h)}
-          {renderHandle(crop.x + crop.w, crop.y + crop.h)}
+          {corners.map((c, i) => (
+            <View
+              key={i}
+              style={[
+                styles.handle,
+                { left: c.x - HANDLE_SIZE / 2, top: c.y - HANDLE_SIZE / 2 },
+              ]}
+            >
+              <View
+                style={[
+                  styles.handleInner,
+                  mode === "perspective" && styles.handleInnerPerspective,
+                ]}
+              />
+            </View>
+          ))}
         </View>
       </View>
 
       <View style={[styles.bottomBar, { paddingBottom: bottomInset + 16 }]}>
         <Pressable
-          onPress={() =>
-            setCrop({ x: 0, y: 0, w: displayW, h: displayH })
-          }
+          onPress={resetCorners}
           style={({ pressed }) => [
             styles.resetBtn,
             pressed && { opacity: 0.7 },
@@ -298,17 +426,98 @@ export default function ImageCropper({
         </Pressable>
         <Pressable
           onPress={handleConfirm}
+          disabled={applying}
           style={({ pressed }) => [
             styles.confirmBtn,
             pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            applying && { opacity: 0.6 },
           ]}
         >
-          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-          <Text style={styles.confirmText}>Apply Crop</Text>
+          {applying ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+              <Text style={styles.confirmText}>Apply</Text>
+            </>
+          )}
         </Pressable>
       </View>
     </View>
   );
+}
+
+function isInsideQuad(px: number, py: number, c: Corners): boolean {
+  let inside = false;
+  for (let i = 0, j = 3; i < 4; j = i++) {
+    const xi = c[i].x, yi = c[i].y;
+    const xj = c[j].x, yj = c[j].y;
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function isAxisAligned(c: Corners): boolean {
+  const eps = 3;
+  return (
+    Math.abs(c[0].y - c[1].y) < eps &&
+    Math.abs(c[2].y - c[3].y) < eps &&
+    Math.abs(c[0].x - c[3].x) < eps &&
+    Math.abs(c[1].x - c[2].x) < eps
+  );
+}
+
+function renderRectDim(corners: Corners, displayW: number, displayH: number) {
+  const minX = Math.min(corners[0].x, corners[3].x);
+  const maxX = Math.max(corners[1].x, corners[2].x);
+  const minY = Math.min(corners[0].y, corners[1].y);
+  const maxY = Math.max(corners[2].y, corners[3].y);
+
+  return (
+    <>
+      <View style={{ width: displayW, height: Math.max(0, minY), backgroundColor: DIM_COLOR }} />
+      <View style={{ flexDirection: "row", height: Math.max(0, maxY - minY) }}>
+        <View style={{ width: Math.max(0, minX), height: "100%", backgroundColor: DIM_COLOR }} />
+        <View style={{ width: Math.max(0, maxX - minX), height: "100%" }} />
+        <View style={{ width: Math.max(0, displayW - maxX), height: "100%", backgroundColor: DIM_COLOR }} />
+      </View>
+      <View style={{ width: displayW, height: Math.max(0, displayH - maxY), backgroundColor: DIM_COLOR }} />
+    </>
+  );
+}
+
+function renderQuadEdges(corners: Corners) {
+  const edges: React.ReactNode[] = [];
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    const x1 = corners[i].x;
+    const y1 = corners[i].y;
+    const x2 = corners[j].x;
+    const y2 = corners[j].y;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    edges.push(
+      <View
+        key={i}
+        style={{
+          position: "absolute",
+          left: x1,
+          top: y1 - 0.75,
+          width: len,
+          height: 1.5,
+          backgroundColor: "#FFFFFF",
+          transformOrigin: "0% 50%",
+          transform: [{ rotate: `${angle}deg` }],
+        }}
+      />
+    );
+  }
+  return edges;
 }
 
 const DIM_COLOR = "rgba(0,0,0,0.55)";
@@ -324,39 +533,38 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
-  headerTitle: {
-    fontSize: 16,
+  modeToggle: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
+    padding: 3,
+  },
+  modeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  modeBtnActive: {
+    backgroundColor: Colors.light.accent,
+  },
+  modeBtnText: {
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
+    color: "#999",
+  },
+  modeBtnTextActive: {
     color: "#FFFFFF",
-    letterSpacing: -0.2,
   },
   imageArea: {
     position: "absolute",
   },
   dimOverlay: {
     ...StyleSheet.absoluteFillObject,
-  },
-  dimTop: {
-    width: "100%",
-    backgroundColor: DIM_COLOR,
-  },
-  dimMiddle: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-  },
-  dimSide: {
-    height: "100%",
-    backgroundColor: DIM_COLOR,
-  },
-  dimBottom: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: DIM_COLOR,
   },
   cropBorder: {
     position: "absolute",
@@ -409,6 +617,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderWidth: 2,
     borderColor: Colors.light.accent,
+  },
+  handleInnerPerspective: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderColor: "#22D3EE",
   },
   bottomBar: {
     position: "absolute",
