@@ -209,7 +209,7 @@ export default function DetailScreen() {
         });
       }
     } catch (err) {
-      console.error("Piper TTS error:", err);
+      console.error("TTS error:", err);
       resetPlayback();
     }
   }, [postcard, isPlaying, player, finishPlayback, resetPlayback, audioSource, baseUrl, updatePostcard]);
