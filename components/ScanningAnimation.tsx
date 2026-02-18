@@ -22,6 +22,12 @@ const IMAGE_SCALE = 1.35;
 const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
 const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
 
+const GRID_COLS = 12;
+const GRID_ROWS = Math.round((CARD_HEIGHT / CARD_WIDTH) * GRID_COLS);
+const CELL_W = CARD_WIDTH / GRID_COLS;
+const CELL_H = CARD_HEIGHT / GRID_ROWS;
+const CELL_GAP = 1;
+
 const BLOCK_COLORS = [
   "rgba(99, 102, 241, 0.5)",
   "rgba(167, 139, 250, 0.5)",
@@ -63,6 +69,74 @@ function generateTextBlockConfigs(count: number): TextBlockConfig[] {
     });
   }
   return configs;
+}
+
+interface FlickeringCellConfig {
+  col: number;
+  row: number;
+  delay: number;
+  onDuration: number;
+  offDuration: number;
+  maxOpacity: number;
+}
+
+function generateFlickerConfigs(): FlickeringCellConfig[] {
+  const configs: FlickeringCellConfig[] = [];
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      configs.push({
+        col: c,
+        row: r,
+        delay: Math.random() * 3000,
+        onDuration: 300 + Math.random() * 800,
+        offDuration: 400 + Math.random() * 2200,
+        maxOpacity: 0.06 + Math.random() * 0.1,
+      });
+    }
+  }
+  return configs;
+}
+
+function FlickeringCell({ config }: { config: FlickeringCellConfig }) {
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withDelay(
+      config.delay,
+      withRepeat(
+        withSequence(
+          withTiming(config.maxOpacity, { duration: config.onDuration * 0.3, easing: Easing.out(Easing.quad) }),
+          withTiming(config.maxOpacity * 0.6, { duration: config.onDuration * 0.7 }),
+          withTiming(0, { duration: config.onDuration * 0.2, easing: Easing.in(Easing.quad) }),
+          withTiming(0, { duration: config.offDuration })
+        ),
+        -1,
+        false
+      )
+    );
+    return () => cancelAnimation(opacity);
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: "absolute",
+          left: config.col * CELL_W + CELL_GAP,
+          top: config.row * CELL_H + CELL_GAP,
+          width: CELL_W - CELL_GAP * 2,
+          height: CELL_H - CELL_GAP * 2,
+          borderRadius: 2,
+          backgroundColor: Colors.light.accent,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
 }
 
 function TextBlockOutline({ config }: { config: TextBlockConfig }) {
@@ -147,6 +221,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const contrastOpacity = useSharedValue(0);
 
   const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
+  const flickerConfigs = useMemo(() => generateFlickerConfigs(), []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
@@ -300,6 +375,12 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
           style={[styles.cardImage, imageStyle]}
           resizeMode="cover"
         />
+
+        <View style={styles.overlayContainer} pointerEvents="none">
+          {flickerConfigs.map((config, i) => (
+            <FlickeringCell key={`fc${i}`} config={config} />
+          ))}
+        </View>
 
         <View style={styles.overlayContainer}>
           {textBlockConfigs.map((config, i) => (
