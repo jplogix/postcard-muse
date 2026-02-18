@@ -28,7 +28,11 @@ import LoadingJokes from "@/components/LoadingJokes";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const POSTCARD_ASPECT: [number, number] = [16, 10];
+type ImageWithSize = {
+  uri: string;
+  width: number;
+  height: number;
+};
 
 type ProcessingState = "idle" | "scanning" | "extracting" | "translating" | "saving" | "done" | "error";
 
@@ -48,10 +52,24 @@ export default function AddPostcardScreen() {
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const [frontImage, setFrontImage] = useState<string | null>(null);
-  const [backImage, setBackImage] = useState<string | null>(null);
+  const [frontImage, setFrontImage] = useState<ImageWithSize | null>(null);
+  const [backImage, setBackImage] = useState<ImageWithSize | null>(null);
   const [processing, setProcessing] = useState<ProcessingState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+
+  const handleAsset = useCallback((asset: ImagePicker.ImagePickerAsset, side: "front" | "back") => {
+    const img: ImageWithSize = {
+      uri: asset.uri,
+      width: asset.width || 1600,
+      height: asset.height || 1000,
+    };
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (side === "front") {
+      setFrontImage(img);
+    } else {
+      setBackImage(img);
+    }
+  }, []);
 
   const pickImage = useCallback(async (side: "front" | "back") => {
     try {
@@ -59,21 +77,15 @@ export default function AddPostcardScreen() {
         mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: true,
-        aspect: POSTCARD_ASPECT,
       });
 
       if (!result.canceled && result.assets[0]) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        if (side === "front") {
-          setFrontImage(result.assets[0].uri);
-        } else {
-          setBackImage(result.assets[0].uri);
-        }
+        handleAsset(result.assets[0], side);
       }
     } catch (err) {
       console.error("Image picker error:", err);
     }
-  }, []);
+  }, [handleAsset]);
 
   const takePhoto = useCallback(async (side: "front" | "back") => {
     try {
@@ -85,21 +97,15 @@ export default function AddPostcardScreen() {
       const result = await ImagePicker.launchCameraAsync({
         quality: 0.8,
         allowsEditing: true,
-        aspect: POSTCARD_ASPECT,
       });
 
       if (!result.canceled && result.assets[0]) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        if (side === "front") {
-          setFrontImage(result.assets[0].uri);
-        } else {
-          setBackImage(result.assets[0].uri);
-        }
+        handleAsset(result.assets[0], side);
       }
     } catch (err) {
       console.error("Camera error:", err);
     }
-  }, []);
+  }, [handleAsset]);
 
   const processPostcard = useCallback(async () => {
     if (!backImage) {
@@ -116,10 +122,10 @@ export default function AddPostcardScreen() {
       let backBase64: string | null = null;
 
       if (frontImage) {
-        frontBase64 = await imageToBase64(frontImage);
+        frontBase64 = await imageToBase64(frontImage.uri);
       }
       if (backImage) {
-        backBase64 = await imageToBase64(backImage);
+        backBase64 = await imageToBase64(backImage.uri);
       }
 
       setProcessing("extracting");
@@ -150,8 +156,8 @@ export default function AddPostcardScreen() {
         }
       }
 
-      const frontUri = frontImage ? await saveImagePermanently(frontImage) : "";
-      const backUri = backImage ? await saveImagePermanently(backImage) : null;
+      const frontUri = frontImage ? await saveImagePermanently(frontImage.uri) : "";
+      const backUri = backImage ? await saveImagePermanently(backImage.uri) : null;
 
       const postcard: Postcard = {
         id: Crypto.randomUUID(),
@@ -182,12 +188,12 @@ export default function AddPostcardScreen() {
       setProcessing("error");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  }, [frontImage, backImage, targetLanguage, addPostcard]);
+  }, [frontImage, backImage, targetLanguage, excludeAddress, addPostcard]);
 
   const isProcessing = processing !== "idle" && processing !== "error";
 
   if (isProcessing || processing === "done") {
-    const scanImage = backImage || frontImage || "";
+    const scanImage = backImage?.uri || frontImage?.uri || "";
     return (
       <View style={[styles.container, { paddingTop: topInset }]}>
         <MeshGradientBackground />
@@ -224,17 +230,19 @@ export default function AddPostcardScreen() {
 
   const renderImageSlot = (
     side: "front" | "back",
-    image: string | null,
-    setImage: (v: string | null) => void,
+    image: ImageWithSize | null,
+    setImage: (v: ImageWithSize | null) => void,
     icon: string,
     iconColor: string,
     title: string,
     subtitle: string,
   ) => {
     if (image) {
+      const ratio = image.width / image.height;
+      const clampedRatio = Math.max(0.5, Math.min(ratio, 2));
       return (
-        <View style={styles.imagePickerBox}>
-          <Image source={{ uri: image }} style={styles.previewImage} contentFit="cover" />
+        <View style={[styles.imagePickerBox, { aspectRatio: clampedRatio }]}>
+          <Image source={{ uri: image.uri }} style={styles.previewImage} contentFit="cover" />
           <Pressable
             onPress={() => setImage(null)}
             style={styles.removeBtn}
