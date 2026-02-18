@@ -39,58 +39,66 @@ const fragmentShader = `
 
   varying vec2 vUv;
 
-  // Simple pseudo-random noise
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
   }
 
+  float hash2(vec2 p) {
+    return fract(sin(dot(p, vec2(269.5, 183.3))) * 43758.5453123);
+  }
+
   void main() {
-    // Scan band position: loops bottom to top
     float scanPos = fract(uTime * uScanSpeed);
-
-    // Distance from scan band center
     float dist = abs(vUv.y - scanPos);
-
-    // Smooth band falloff (wider = 0.08, core = 0.02)
     float bandWide = smoothstep(0.12, 0.0, dist);
     float bandCore = smoothstep(0.025, 0.0, dist);
 
-    // Horizontal UV distortion inside the scan band
     float distortion = bandWide * 0.008 * sin(vUv.y * 80.0 + uTime * 12.0);
     vec2 uv = vUv;
     uv.x += distortion;
 
-    // Sample the postcard texture
     vec4 texColor = texture2D(uTexture, uv);
 
-    // Grid overlay: thin lines blended behind image
-    float gridX = step(0.98, fract(uv.x * 30.0));
-    float gridY = step(0.98, fract(uv.y * 30.0));
-    float grid = max(gridX, gridY) * 0.06;
-    vec3 gridColor = vec3(grid) * uGlowColor;
+    // Flickering grid overlay
+    float gridSize = 20.0;
+    vec2 cellId = floor(uv * gridSize);
+    vec2 cellUv = fract(uv * gridSize);
+    float cellGap = 0.08;
+    float inCell = step(cellGap, cellUv.x) * step(cellGap, cellUv.y)
+                 * (1.0 - step(1.0 - cellGap, cellUv.x)) * (1.0 - step(1.0 - cellGap, cellUv.y));
 
-    // Flicker noise inside the band to simulate AI analysis
+    float cellSeed = hash(cellId);
+    float flickerRate = 0.5 + cellSeed * 2.5;
+    float flickerPhase = cellSeed * 6.2831;
+    float flickerVal = sin(uTime * flickerRate + flickerPhase) * 0.5 + 0.5;
+    float randomThreshold = hash2(cellId + floor(uTime * 0.8));
+    float cellOn = step(0.55, flickerVal * 0.7 + randomThreshold * 0.3);
+    float cellAlpha = cellOn * (0.04 + 0.06 * flickerVal);
+    float bandBoost = bandWide * 0.12;
+    cellAlpha += bandBoost * cellOn;
+    vec3 gridColor = uGlowColor * cellAlpha * inCell;
+
+    // Grid border lines
+    float lineX = step(0.97, fract(uv.x * gridSize));
+    float lineY = step(0.97, fract(uv.y * gridSize));
+    float gridLine = max(lineX, lineY) * 0.03;
+    vec3 lineColor = uGlowColor * gridLine;
+
     float noise = hash(vec2(floor(uv.x * 60.0), floor(uv.y * 60.0) + uTime * 6.0));
     float flicker = bandWide * noise * 0.15;
 
-    // Neon glow: bright cyan/blue where band passes
     vec3 glow = uGlowColor * bandWide * 0.45;
-
-    // Fake bloom: extra brightness at core of band
     vec3 bloom = uGlowColor * bandCore * 0.6;
-
-    // Slight brightness boost in scan region
     float brightnessBoost = bandWide * 0.12;
 
-    // Compose final color
     vec3 finalColor = texColor.rgb;
     finalColor += gridColor;
+    finalColor += lineColor;
     finalColor += glow;
     finalColor += bloom;
     finalColor += vec3(flicker) * uGlowColor;
     finalColor += vec3(brightnessBoost);
 
-    // Subtle vignette for depth
     float vig = 1.0 - 0.3 * length((vUv - 0.5) * 1.4);
     finalColor *= vig;
 
