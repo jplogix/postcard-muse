@@ -26,9 +26,17 @@ import ScanningAnimation from "@/components/ScanningAnimation";
 import ImageScanner from "@/components/ImageScanner";
 import LoadingJokes from "@/components/LoadingJokes";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
+import ImageCropper from "@/components/ImageCropper";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 type ImageWithSize = {
+  uri: string;
+  width: number;
+  height: number;
+};
+
+type CropPending = {
+  side: "front" | "back";
   uri: string;
   width: number;
   height: number;
@@ -56,19 +64,32 @@ export default function AddPostcardScreen() {
   const [backImage, setBackImage] = useState<ImageWithSize | null>(null);
   const [processing, setProcessing] = useState<ProcessingState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [cropPending, setCropPending] = useState<CropPending | null>(null);
 
-  const handleAsset = useCallback((asset: ImagePicker.ImagePickerAsset, side: "front" | "back") => {
-    const img: ImageWithSize = {
+  const startCrop = useCallback((asset: ImagePicker.ImagePickerAsset, side: "front" | "back") => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCropPending({
+      side,
       uri: asset.uri,
       width: asset.width || 1600,
       height: asset.height || 1000,
-    };
+    });
+  }, []);
+
+  const handleCropDone = useCallback((uri: string, width: number, height: number) => {
+    if (!cropPending) return;
+    const img: ImageWithSize = { uri, width, height };
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (side === "front") {
+    if (cropPending.side === "front") {
       setFrontImage(img);
     } else {
       setBackImage(img);
     }
+    setCropPending(null);
+  }, [cropPending]);
+
+  const handleCropCancel = useCallback(() => {
+    setCropPending(null);
   }, []);
 
   const pickImage = useCallback(async (side: "front" | "back") => {
@@ -79,12 +100,12 @@ export default function AddPostcardScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        handleAsset(result.assets[0], side);
+        startCrop(result.assets[0], side);
       }
     } catch (err) {
       console.error("Image picker error:", err);
     }
-  }, [handleAsset]);
+  }, [startCrop]);
 
   const takePhoto = useCallback(async (side: "front" | "back") => {
     try {
@@ -98,12 +119,12 @@ export default function AddPostcardScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        handleAsset(result.assets[0], side);
+        startCrop(result.assets[0], side);
       }
     } catch (err) {
       console.error("Camera error:", err);
     }
-  }, [handleAsset]);
+  }, [startCrop]);
 
   const processPostcard = useCallback(async () => {
     if (!backImage) {
@@ -188,6 +209,18 @@ export default function AddPostcardScreen() {
     }
   }, [frontImage, backImage, targetLanguage, excludeAddress, addPostcard]);
 
+  if (cropPending) {
+    return (
+      <ImageCropper
+        imageUri={cropPending.uri}
+        imageWidth={cropPending.width}
+        imageHeight={cropPending.height}
+        onCropDone={handleCropDone}
+        onCancel={handleCropCancel}
+      />
+    );
+  }
+
   const isProcessing = processing !== "idle" && processing !== "error";
 
   if (isProcessing || processing === "done") {
@@ -249,6 +282,14 @@ export default function AddPostcardScreen() {
             <Ionicons name="close-circle" size={24} color={Colors.light.error} />
           </Pressable>
           <View style={styles.retakeRow}>
+            <Pressable
+              onPress={() => {
+                setCropPending({ side, uri: image.uri, width: image.width, height: image.height });
+              }}
+              style={({ pressed }) => [styles.retakeChip, pressed && { opacity: 0.7 }]}
+            >
+              <Ionicons name="crop" size={14} color="#FFFFFF" />
+            </Pressable>
             <Pressable
               onPress={() => takePhoto(side)}
               style={({ pressed }) => [styles.retakeChip, pressed && { opacity: 0.7 }]}
