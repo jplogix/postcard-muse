@@ -16,6 +16,7 @@
     "lint:fix": "npx expo lint --fix"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.36.0",
     "@expo-google-fonts/caveat": "^0.4.2",
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
