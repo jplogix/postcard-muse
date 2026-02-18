@@ -1,0 +1,212 @@
+Postcard Muse - Recent Feature Additions
+Project Overview
+A React Native/Expo mobile app that digitizes physical postcards using AI. Users scan postcards, extract handwritten text with Google Gemini, translate messages, and listen to them via ElevenLabs TTS.
+
+Tech Stack
+Frontend: React Native, Expo (SDK 54), TypeScript
+Backend: Express.js (Hono for routes), running on port 5000
+Package Manager: pnpm
+AI Services: Google Gemini (OCR/translation), ElevenLabs (TTS)
+Database: SQLite with Drizzle ORM
+Storage: Cloudflare R2 for assets
+Recent Feature Additions
+1. ElevenLabs TTS with Audio Sync ✨
+Implementation:
+
+Pre-generates audio during postcard processing workflow
+Stores audio URL and duration in database
+Syncs audio playback with animated text highlighting
+Key Files:
+
+server/routes.ts
+ - /api/tts endpoint calls ElevenLabs API
+app/detail/[id].tsx
+ - Audio player with synchronized text animation
+components/AnimatedText.tsx
+ - Per-word highlighting based on audio progress
+lib/storage.ts
+ - Postcard model includes audioPath and audioDurationMs
+Environment Variables:
+
+bash
+ELEVENLABS_API_KEY=sk_...
+Audio Sync Logic:
+
+typescript
+// Calculate word timing based on audio duration
+const wordDelayMs = audioDurationMs / words.length;
+const currentWordIndex = Math.floor((currentTime * 1000) / wordDelayMs);
+2. Advanced Scanning Animation 🔄
+Implementation:
+
+Real-time 3D scanning effect using expo-gl and custom shaders
+WebGL-based scan line with glow and radar effects
+Web fallback using React animation
+Key Files:
+
+components/ImageScanner.tsx
+ - WebGL-based 3D scanning animation with:
+GLSL shaders for scan line effect
+Configurable scan speed and glow color
+Texture loading from postcard images
+components/ScanningAnimation.tsx
+ - Web fallback with CSS animations
+app/add.tsx
+ - Integration during postcard processing
+Features:
+
+Animated scan line sweeping across image
+Pulsing glow effect synchronized with scan
+Radar-style rotation animation
+Platform-specific rendering (WebGL for native, CSS for web)
+Usage:
+
+tsx
+<ImageScanner
+  imageUrl={postcardUri}
+  scanSpeed={0.15}
+  glowColor={[0.31, 0.27, 0.9]} // RGB normalized
+/>
+3. Text Glow Overlay (Handwriting Highlight) ✍️
+Implementation:
+
+AI-generated bounding boxes for handwritten text
+Animated glow effect around detected text regions
+Staggered reveal animation
+Key Files:
+
+components/TextGlowOverlay.tsx
+ - Renders glow boxes with animations
+scripts/test-gemini-bounding.ts
+ - Test script for Gemini bounding box API
+Gemini prompt includes: "Return bounding boxes for each word"
+Data Structure:
+
+typescript
+interface Word {
+  text: string;
+  boundingBox?: {
+    x: number;      // normalized 0-1
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+4. Expo Go Blur Fallback 🌫️
+Implementation:
+
+BlurView from expo-blur doesn't work in Expo Go
+Created 
+GlassView
+ component that detects environment
+Falls back to semi-transparent backgrounds in development
+Key Files:
+
+components/GlassView.tsx
+ - Cross-platform blur wrapper
+Replaced all BlurView imports with 
+GlassView
+Component Logic:
+
+typescript
+export default function GlassView({ children, style }) {
+  // Always uses plain View in development
+  // BlurView requires native compilation (production builds)
+  return <View style={style}>{children}</View>;
+}
+Styles with fallback backgrounds:
+
+typescript
+headerBlur: {
+  backgroundColor: "rgba(255, 255, 255, 0.85)", // Fallback
+  borderRadius: 24,
+  borderWidth: 1,
+  borderColor: Colors.light.glassBorder,
+}
+5. CORS & Environment Setup 🔧
+Local Development CORS: Updated 
+server/index.ts
+ to allow:
+
+localhost origins (any port)
+Local network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+Required for Expo development server (port 8081) → API (port 5000)
+Environment Variables: 
+.env.local
+:
+
+bash
+ELEVENLABS_API_KEY=sk_...
+EXPO_PUBLIC_DOMAIN=localhost:5000
+API URL Construction: 
+lib/query-client.ts
+ automatically uses:
+
+http:// for localhost domains
+https:// for production domains
+Loading Jokes Feature 😄
+Implementation:
+
+Displays random programming jokes during AI processing
+Auto-advances every 4 seconds with fade transitions
+Key Files:
+
+components/LoadingJokes.tsx
+ - Animated joke carousel
+Integrated in 
+app/add.tsx
+ during processing states
+Jokes Array:
+
+typescript
+const JOKES = [
+  "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
+  "How many programmers does it take to change a light bulb? None, that's a hardware problem! 💡",
+  // ... 30+ jokes
+];
+Common Development Commands
+bash
+# Start Expo dev server
+pnpm run start
+# Start backend server (separate terminal)
+cd server && bun run dev
+# Run type checking
+pnpm run typecheck
+# Format code with Biome
+pnpm run format
+Architecture Notes
+Processing Flow:
+User uploads postcard images (front/back)
+Images converted to base64
+POST /api/process-postcard:
+Gemini extracts text + bounding boxes
+Gemini translates to target language
+NEW: ElevenLabs generates audio
+Images uploaded to R2 storage
+Data saved to SQLite with Drizzle
+NEW: Audio URL + duration stored in DB
+UI Flow:
+Gallery (
+app/index.tsx
+) - Grid of postcards
+Scan (
+app/add.tsx
+) - Upload images with scanning animation
+Processing states with loading jokes
+Detail (
+app/detail/[id].tsx
+) - View with audio player and text glow
+Notes for Future Development
+Audio Sync: Consider adding playback controls (pause/resume)
+Scanning Animation: Could add completion callback for success feedback
+Text Glow: Timing can be adjusted via delay prop (currently 100ms stagger)
+GlassView: For production builds, implement proper Expo Go detection using Constants.executionEnvironment
+Dependencies to Note
+json
+{
+  "expo-gl": "^15.0.6",        // WebGL for scanning animation
+  "expo-blur": "^15.1.2",      // Native blur (production only)
+  "expo-av": "~15.0.1",        // Audio playback
+  "@google/generative-ai": "^0.21.0",
+  "elevenlabs": "^0.19.5"      // TTS library
+}
