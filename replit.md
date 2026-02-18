@@ -6,7 +6,15 @@ Postcard Muse is a mobile application that serves as a digital gallery for physi
 
 The project is a full-stack Expo + Express application. The Expo frontend handles the mobile UI and local data persistence, while the Express backend proxies AI requests to Google Gemini for postcard processing.
 
-## Recent Changes (Feb 14, 2026)
+## Recent Changes (Feb 18, 2026)
+
+- Added perspective crop mode to ImageCropper: toggle between standard rectangular crop and perspective correction with 4 independently draggable corners
+- Server-side perspective transform via `POST /api/perspective-crop` using sharp + homography matrix for bilinear interpolation
+- Cropper now shows mode toggle (Crop / Perspective) in header with indigo active state
+- In perspective mode, quad edges render as rotated lines connecting the 4 free corners; dim overlay covers entire image
+- Added `sharp` dependency for server-side image processing
+
+## Previous Changes (Feb 14, 2026)
 
 - Redesigned entire app from dark theme to light glassmorphism aesthetic matching web version
 - Added animated MeshGradientBackground with three floating blobs (purple, indigo, pink)
