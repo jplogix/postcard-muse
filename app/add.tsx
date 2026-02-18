@@ -18,7 +18,6 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as Crypto from "expo-crypto";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import { BlurView } from "expo-blur";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import { saveImagePermanently, imageToBase64, Postcard } from "@/lib/storage";
@@ -281,10 +280,10 @@ export default function AddPostcardScreen() {
                     <Text style={styles.glassBtnText}>Camera</Text>
                   </GlassView>
                 ) : (
-                  <BlurView intensity={40} tint="light" style={styles.glassBtn}>
+                  <View style={styles.glassBtnFallback}>
                     <Ionicons name="camera" size={18} color={Colors.light.accent} />
                     <Text style={styles.glassBtnText}>Camera</Text>
-                  </BlurView>
+                  </View>
                 )}
               </Pressable>
             )}
@@ -298,10 +297,10 @@ export default function AddPostcardScreen() {
                   <Text style={styles.glassBtnText}>Upload</Text>
                 </GlassView>
               ) : (
-                <BlurView intensity={40} tint="light" style={styles.glassBtn}>
+                <View style={styles.glassBtnFallback}>
                   <Ionicons name="image" size={18} color={Colors.light.accent} />
                   <Text style={styles.glassBtnText}>Upload</Text>
-                </BlurView>
+                </View>
               )}
             </Pressable>
           </View>
@@ -459,7 +458,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "rgba(255, 255, 255, 0.45)",
+  },
+  glassBtnFallback: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: "rgba(79, 70, 229, 0.08)",
     borderWidth: 1,
     borderColor: "rgba(79, 70, 229, 0.18)",
   },
