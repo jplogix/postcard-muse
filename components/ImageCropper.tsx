@@ -15,7 +15,7 @@ import { Image } from "expo-image";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as FileSystem from "expo-file-system";
+import { File as FSFile, Paths } from "expo-file-system";
 import Colors from "@/constants/colors";
 import { getApiUrl } from "@/lib/query-client";
 
@@ -197,9 +197,8 @@ export default function ImageCropper({
           y: Math.round(pt.y * scale),
         }));
 
-        const base64 = await FileSystem.readAsStringAsync(imageUri, {
-          encoding: "base64" as any,
-        });
+        const srcFile = new FSFile(imageUri);
+        const base64 = await srcFile.base64();
 
         const apiUrl = getApiUrl();
         const url = new URL("/api/perspective-crop", apiUrl);
@@ -224,11 +223,10 @@ export default function ImageCropper({
         const resultW = data.width;
         const resultH = data.height;
 
-        const fileUri =
-          (FileSystem as any).cacheDirectory + "perspective_crop_" + Date.now() + ".jpg";
-        await FileSystem.writeAsStringAsync(fileUri, resultBase64, {
-          encoding: "base64" as any,
-        });
+        const outFile = new FSFile(Paths.cache, "perspective_crop_" + Date.now() + ".jpg");
+        const bytes = Uint8Array.from(atob(resultBase64), (c) => c.charCodeAt(0));
+        outFile.write(bytes);
+        const fileUri = outFile.uri;
 
         setApplying(false);
         onCropDone(fileUri, resultW, resultH);

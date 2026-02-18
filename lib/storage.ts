@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
+import { File, Paths, Directory } from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import { Platform } from "react-native";
 
@@ -20,24 +20,28 @@ export interface Postcard {
 
 const POSTCARDS_KEY = "postcards_data";
 const SETTINGS_KEY = "postcard_settings";
-const IMAGE_DIR = Platform.OS === "web" ? "" : `${(FileSystem as any).documentDirectory}postcards/`;
 
-async function ensureImageDir() {
+function getImageDir(): Directory {
+  return new Directory(Paths.document, "postcards/");
+}
+
+function ensureImageDir() {
   if (Platform.OS === "web") return;
-  const info = await FileSystem.getInfoAsync(IMAGE_DIR);
-  if (!info.exists) {
-    await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+  const dir = getImageDir();
+  if (!dir.exists) {
+    dir.create({ intermediates: true });
   }
 }
 
 export async function saveImagePermanently(uri: string): Promise<string> {
   if (Platform.OS === "web") return uri;
-  await ensureImageDir();
+  ensureImageDir();
   const id = Crypto.randomUUID();
   const ext = uri.includes(".png") ? "png" : "jpg";
-  const dest = `${IMAGE_DIR}${id}.${ext}`;
-  await FileSystem.copyAsync({ from: uri, to: dest });
-  return dest;
+  const dest = new File(getImageDir(), `${id}.${ext}`);
+  const src = new File(uri);
+  src.copy(dest);
+  return dest.uri;
 }
 
 export async function getPostcards(): Promise<Postcard[]> {
@@ -67,9 +71,11 @@ export async function deletePostcard(id: string): Promise<void> {
   const card = postcards.find((p) => p.id === id);
   if (card && Platform.OS !== "web") {
     try {
-      await FileSystem.deleteAsync(card.frontImageUri, { idempotent: true });
+      const frontFile = new File(card.frontImageUri);
+      if (frontFile.exists) frontFile.delete();
       if (card.backImageUri) {
-        await FileSystem.deleteAsync(card.backImageUri, { idempotent: true });
+        const backFile = new File(card.backImageUri);
+        if (backFile.exists) backFile.delete();
       }
     } catch {}
   }
@@ -105,8 +111,7 @@ export async function imageToBase64(uri: string): Promise<string> {
       reader.readAsDataURL(blob);
     });
   }
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: "base64" as any,
-  });
+  const file = new File(uri);
+  const base64 = await file.base64();
   return `data:image/jpeg;base64,${base64}`;
 }
