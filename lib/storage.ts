@@ -106,7 +106,7 @@ export async function imageToBase64(uri: string): Promise<string> {
     });
   }
   const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: (FileSystem as any).EncodingType.Base64,
+    encoding: "base64" as any,
   });
   return `data:image/jpeg;base64,${base64}`;
 }
