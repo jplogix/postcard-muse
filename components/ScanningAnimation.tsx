@@ -14,6 +14,8 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 
+const noiseTexture = require("@/assets/images/noise.png");
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
@@ -22,7 +24,7 @@ const IMAGE_SCALE = 1.35;
 const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
 const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
 
-const FLICKER_COUNT = Platform.OS === "web" ? 24 : 16;
+const SCANLINE_COUNT = Math.floor(CARD_HEIGHT / 3);
 
 const BLOCK_COLORS = [
   "rgba(99, 102, 241, 0.5)",
@@ -65,78 +67,6 @@ function generateTextBlockConfigs(count: number): TextBlockConfig[] {
     });
   }
   return configs;
-}
-
-interface FlickerParticleConfig {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  delay: number;
-  onDuration: number;
-  offDuration: number;
-  maxOpacity: number;
-}
-
-function generateFlickerParticles(): FlickerParticleConfig[] {
-  const configs: FlickerParticleConfig[] = [];
-  for (let i = 0; i < FLICKER_COUNT; i++) {
-    const w = 12 + Math.random() * 30;
-    const h = 8 + Math.random() * 20;
-    configs.push({
-      x: Math.random() * (CARD_WIDTH - w),
-      y: Math.random() * (CARD_HEIGHT - h),
-      w,
-      h,
-      delay: Math.random() * 4000,
-      onDuration: 250 + Math.random() * 700,
-      offDuration: 600 + Math.random() * 2500,
-      maxOpacity: 0.08 + Math.random() * 0.12,
-    });
-  }
-  return configs;
-}
-
-function FlickerParticle({ config }: { config: FlickerParticleConfig }) {
-  const opacity = useSharedValue(0);
-
-  useEffect(() => {
-    opacity.value = withDelay(
-      config.delay,
-      withRepeat(
-        withSequence(
-          withTiming(config.maxOpacity, { duration: config.onDuration * 0.4, easing: Easing.out(Easing.quad) }),
-          withTiming(config.maxOpacity * 0.5, { duration: config.onDuration * 0.6 }),
-          withTiming(0, { duration: config.onDuration * 0.3, easing: Easing.in(Easing.quad) }),
-          withTiming(0, { duration: config.offDuration })
-        ),
-        -1,
-        false
-      )
-    );
-    return () => cancelAnimation(opacity);
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
-
-  return (
-    <Animated.View
-      style={[
-        {
-          position: "absolute",
-          left: config.x,
-          top: config.y,
-          width: config.w,
-          height: config.h,
-          borderRadius: 3,
-          backgroundColor: Colors.light.accent,
-        },
-        animatedStyle,
-      ]}
-    />
-  );
 }
 
 function TextBlockOutline({ config }: { config: TextBlockConfig }) {
@@ -206,6 +136,93 @@ function TextBlockOutline({ config }: { config: TextBlockConfig }) {
   );
 }
 
+function TVStaticOverlay() {
+  const shiftX = useSharedValue(0);
+  const shiftY = useSharedValue(0);
+  const noiseOpacity = useSharedValue(0.06);
+
+  useEffect(() => {
+    shiftX.value = withRepeat(
+      withSequence(
+        withTiming(40, { duration: 80 }),
+        withTiming(-25, { duration: 70 }),
+        withTiming(55, { duration: 90 }),
+        withTiming(-40, { duration: 60 }),
+        withTiming(15, { duration: 80 }),
+        withTiming(-55, { duration: 70 }),
+        withTiming(30, { duration: 90 }),
+        withTiming(0, { duration: 60 }),
+      ),
+      -1,
+      false
+    );
+
+    shiftY.value = withRepeat(
+      withSequence(
+        withTiming(-30, { duration: 70 }),
+        withTiming(45, { duration: 90 }),
+        withTiming(-50, { duration: 60 }),
+        withTiming(20, { duration: 80 }),
+        withTiming(-40, { duration: 70 }),
+        withTiming(55, { duration: 90 }),
+        withTiming(-15, { duration: 60 }),
+        withTiming(0, { duration: 80 }),
+      ),
+      -1,
+      false
+    );
+
+    noiseOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.1, { duration: 120 }),
+        withTiming(0.04, { duration: 100 }),
+        withTiming(0.12, { duration: 80 }),
+        withTiming(0.05, { duration: 150 }),
+        withTiming(0.09, { duration: 90 }),
+        withTiming(0.03, { duration: 110 }),
+      ),
+      -1,
+      false
+    );
+
+    return () => {
+      cancelAnimation(shiftX);
+      cancelAnimation(shiftY);
+      cancelAnimation(noiseOpacity);
+    };
+  }, []);
+
+  const noiseStyle = useAnimatedStyle(() => ({
+    opacity: noiseOpacity.value,
+    transform: [
+      { translateX: shiftX.value },
+      { translateY: shiftY.value },
+    ],
+  }));
+
+  return (
+    <View style={styles.staticContainer} pointerEvents="none">
+      <Animated.Image
+        source={noiseTexture}
+        style={[styles.noiseImage, noiseStyle]}
+        resizeMode="repeat"
+      />
+
+      <View style={styles.scanLinesOverlay}>
+        {Array.from({ length: SCANLINE_COUNT }).map((_, i) => (
+          <View
+            key={i}
+            style={[
+              styles.scanLineRow,
+              i % 2 === 0 && styles.scanLineRowVisible,
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 interface ScanningAnimationProps {
   imageUri: string;
   statusText: string;
@@ -221,7 +238,6 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const contrastOpacity = useSharedValue(0);
 
   const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
-  const flickerConfigs = useMemo(() => generateFlickerParticles(), []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
@@ -376,11 +392,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
           resizeMode="cover"
         />
 
-        <View style={styles.overlayContainer} pointerEvents="none">
-          {flickerConfigs.map((config, i) => (
-            <FlickerParticle key={`fp${i}`} config={config} />
-          ))}
-        </View>
+        <TVStaticOverlay />
 
         <View style={styles.overlayContainer}>
           {textBlockConfigs.map((config, i) => (
@@ -454,6 +466,28 @@ const styles = StyleSheet.create({
   },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
+  },
+  staticContainer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  noiseImage: {
+    position: "absolute",
+    top: -60,
+    left: -60,
+    width: CARD_WIDTH + 120,
+    height: CARD_HEIGHT + 120,
+    tintColor: Colors.light.accent,
+  },
+  scanLinesOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scanLineRow: {
+    height: 1.5,
+    marginBottom: 1.5,
+  },
+  scanLineRowVisible: {
+    backgroundColor: "rgba(0, 0, 0, 0.03)",
   },
   contrastOverlay: {
     ...StyleSheet.absoluteFillObject,
