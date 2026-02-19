@@ -67,6 +67,7 @@ export default function AddPostcardScreen() {
   const [errorMsg, setErrorMsg] = useState("");
   const [cropPending, setCropPending] = useState<CropPending | null>(null);
   const [showSamples, setShowSamples] = useState(false);
+  const [selectedSample, setSelectedSample] = useState<SamplePostcard | null>(null);
 
   const startCrop = useCallback((asset: ImagePicker.ImagePickerAsset, side: "front" | "back") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -87,6 +88,7 @@ export default function AddPostcardScreen() {
     } else {
       setBackImage(img);
     }
+    setSelectedSample(null);
     setCropPending(null);
   }, [cropPending]);
 
@@ -127,6 +129,25 @@ export default function AddPostcardScreen() {
       console.error("Camera error:", err);
     }
   }, [startCrop]);
+
+  const loadSample = useCallback(async (sample: SamplePostcard) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedSample(sample);
+    setShowSamples(false);
+
+    try {
+      const [frontAsset, backAsset] = await Promise.all([
+        Asset.fromModule(sample.frontImage).downloadAsync(),
+        Asset.fromModule(sample.backImage).downloadAsync(),
+      ]);
+      const frontUri = frontAsset.localUri || frontAsset.uri;
+      const backUri = backAsset.localUri || backAsset.uri;
+      setFrontImage({ uri: frontUri, width: 1600, height: 1000 });
+      setBackImage({ uri: backUri, width: 1600, height: 1000 });
+    } catch (err) {
+      console.error("Failed to load sample images:", err);
+    }
+  }, []);
 
   const processSample = useCallback(async (sample: SamplePostcard) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -186,6 +207,11 @@ export default function AddPostcardScreen() {
   }, [addPostcard]);
 
   const processPostcard = useCallback(async () => {
+    if (selectedSample) {
+      processSample(selectedSample);
+      return;
+    }
+
     if (!backImage) {
       Alert.alert("Missing image", "Please add the text side of your postcard.");
       return;
@@ -266,7 +292,7 @@ export default function AddPostcardScreen() {
       setProcessing("error");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  }, [frontImage, backImage, targetLanguage, excludeAddress, addPostcard]);
+  }, [frontImage, backImage, targetLanguage, excludeAddress, addPostcard, selectedSample, processSample]);
 
   if (cropPending) {
     return (
@@ -321,7 +347,7 @@ export default function AddPostcardScreen() {
         <View style={[styles.imagePickerBox, { aspectRatio: clampedRatio }]}>
           <Image source={{ uri: image.uri }} style={styles.previewImage} contentFit="cover" />
           <Pressable
-            onPress={() => setImage(null)}
+            onPress={() => { setImage(null); setSelectedSample(null); }}
             style={styles.removeBtn}
             hitSlop={8}
           >
@@ -443,37 +469,25 @@ export default function AddPostcardScreen() {
           <Text style={styles.langValue}>{targetLanguage}</Text>
         </View>
 
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowSamples(!showSamples);
-          }}
-          style={({ pressed }) => [
-            styles.trySampleBtn,
-            pressed && { opacity: 0.85 },
-          ]}
-        >
-          <Feather name="gift" size={16} color={Colors.light.accent} />
-          <Text style={styles.trySampleText}>Try a Sample</Text>
-          <Ionicons
-            name={showSamples ? "chevron-up" : "chevron-down"}
-            size={16}
-            color={Colors.light.textMuted}
-          />
-        </Pressable>
 
+
+      </ScrollView>
+
+      <View style={[styles.bottomBar, { paddingBottom: bottomInset + 16 }]}>
         {showSamples && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.sampleRow}
+            style={styles.sampleScrollContainer}
           >
             {samplePostcards.map((sample) => (
               <Pressable
                 key={sample.id}
-                onPress={() => processSample(sample)}
+                onPress={() => loadSample(sample)}
                 style={({ pressed }) => [
                   styles.sampleCard,
+                  selectedSample?.id === sample.id && styles.sampleCardSelected,
                   pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
                 ]}
               >
@@ -490,32 +504,44 @@ export default function AddPostcardScreen() {
             ))}
           </ScrollView>
         )}
-      </ScrollView>
-
-      <View style={[styles.bottomBar, { paddingBottom: bottomInset + 16 }]}>
-        <Pressable
-          onPress={processPostcard}
-          disabled={!backImage}
-          style={({ pressed }) => [
-            styles.processBtn,
-            !backImage && styles.processBtnDisabled,
-            pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-          ]}
-        >
-          <Ionicons
-            name="sparkles"
-            size={18}
-            color={backImage ? "#FFFFFF" : Colors.light.textMuted}
-          />
-          <Text
-            style={[
-              styles.processBtnText,
-              !backImage && { color: Colors.light.textMuted },
+        <View style={styles.bottomBtnRow}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowSamples(!showSamples);
+            }}
+            style={({ pressed }) => [
+              styles.trySampleBtn,
+              showSamples && styles.trySampleBtnActive,
+              pressed && { opacity: 0.85 },
             ]}
           >
-            Process with AI
-          </Text>
-        </Pressable>
+            <Feather name="gift" size={16} color={Colors.light.accent} />
+          </Pressable>
+          <Pressable
+            onPress={processPostcard}
+            disabled={!backImage && !selectedSample}
+            style={({ pressed }) => [
+              styles.processBtn,
+              !backImage && !selectedSample && styles.processBtnDisabled,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <Ionicons
+              name="sparkles"
+              size={18}
+              color={backImage || selectedSample ? "#FFFFFF" : Colors.light.textMuted}
+            />
+            <Text
+              style={[
+                styles.processBtnText,
+                !backImage && !selectedSample && { color: Colors.light.textMuted },
+              ]}
+            >
+              Process with AI
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -682,39 +708,47 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: Colors.light.accent,
   },
-  trySampleBtn: {
+  bottomBtnRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 24,
-    marginBottom: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(79, 70, 229, 0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(79, 70, 229, 0.12)",
+    gap: 10,
   },
-  trySampleText: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.accent,
+  trySampleBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "rgba(79, 70, 229, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(79, 70, 229, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  trySampleBtnActive: {
+    backgroundColor: "rgba(79, 70, 229, 0.15)",
+    borderColor: Colors.light.accent,
+  },
+  sampleScrollContainer: {
+    marginBottom: 10,
   },
   sampleRow: {
     gap: 12,
     paddingRight: 4,
   },
   sampleCard: {
-    width: 140,
-    borderRadius: 16,
+    width: 130,
+    borderRadius: 14,
     overflow: "hidden",
     backgroundColor: Colors.light.glassCard,
     borderWidth: 1,
     borderColor: Colors.light.glassBorderCard,
   },
+  sampleCardSelected: {
+    borderColor: Colors.light.accent,
+    borderWidth: 2,
+  },
   sampleImage: {
-    width: 140,
-    height: 100,
+    width: 130,
+    height: 90,
   },
   sampleInfo: {
     paddingHorizontal: 10,
@@ -744,6 +778,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.light.slate200,
   },
   processBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
