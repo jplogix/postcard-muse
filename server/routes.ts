@@ -557,26 +557,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const lang = targetLanguage || "English";
 
-      const addressInstruction = excludeAddress
-        ? "\n5. IMPORTANT: Do NOT include any mailing addresses, postal addresses, recipient names/addresses, or sender addresses in the extracted text. Only extract the personal message content, greetings, and signatures. Skip any address blocks entirely."
+      const addressExclusion = excludeAddress
+        ? `
+CRITICAL RULE: You MUST completely exclude ALL mailing addresses, postal addresses, ZIP codes, city/state/country names used as part of an address, recipient names and addresses, and sender/return addresses. Do NOT include them in originalText, translatedText, or words. Only extract the personal message body, greetings, and signatures. If a line looks like an address (contains street names, house numbers, postal codes, city names, or "To:"/"From:" labels), skip it entirely.`
         : "";
 
       const parts: any[] = [];
 
       parts.push({
-        text: `You are a postcard analysis expert. Analyze the provided postcard image(s) carefully.
+        text: `You are a postcard analysis expert. Analyze the provided postcard image(s) carefully.${addressExclusion}
 
 Your task:
-1. Extract ALL handwritten or printed text visible on the postcard(s). Pay close attention to handwriting.
+1. Extract the handwritten or printed text visible on the postcard(s). Pay close attention to handwriting.${excludeAddress ? " Remember: SKIP any mailing addresses entirely — only extract the personal message." : ""}
 2. Identify the language of the original text.
 3. Translate the extracted text into ${lang}.
-4. Provide a brief description of the postcard's visual content (the image/artwork on the front).${addressInstruction}
+4. Provide a brief description of the postcard's visual content (the image/artwork on the front).
 
 Respond in this exact JSON format only, no markdown wrapping:
 {
-  "originalText": "the extracted text exactly as written",
+  "originalText": "the extracted text exactly as written${excludeAddress ? " (NO addresses)" : ""}",
   "detectedLanguage": "the language detected",
-  "translatedText": "the translation in ${lang}",
+  "translatedText": "the translation in ${lang}${excludeAddress ? " (NO addresses)" : ""}",
   "description": "brief visual description of the postcard imagery",
   "words": ["array", "of", "individual", "words", "from", "translated", "text"]
 }
