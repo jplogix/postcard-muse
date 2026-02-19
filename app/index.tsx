@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,15 @@ import {
   Platform,
   Dimensions,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withRepeat,
+  withSequence,
+  Easing,
+} from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
@@ -19,7 +28,88 @@ import { usePostcards } from "@/lib/PostcardContext";
 import PostcardThumbnail, { CARD_SIZE, GAP } from "@/components/PostcardThumbnail";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 
+const AnimatedSvg = Animated.createAnimatedComponent(Svg);
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+function HandwrittenHint({ bottomInset }: { bottomInset: number }) {
+  const textOpacity = useSharedValue(0);
+  const textTranslateY = useSharedValue(12);
+  const arrowOpacity = useSharedValue(0);
+  const arrowTranslateY = useSharedValue(8);
+  const bobY = useSharedValue(0);
+
+  useEffect(() => {
+    textOpacity.value = withDelay(400, withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }));
+    textTranslateY.value = withDelay(400, withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) }));
+    arrowOpacity.value = withDelay(700, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
+    arrowTranslateY.value = withDelay(700, withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }));
+    bobY.value = withDelay(1200, withRepeat(
+      withSequence(
+        withTiming(-4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+        withTiming(4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      true
+    ));
+  }, []);
+
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+    transform: [{ translateY: textTranslateY.value }, { translateY: bobY.value }],
+  }));
+
+  const arrowStyle = useAnimatedStyle(() => ({
+    opacity: arrowOpacity.value,
+    transform: [{ translateY: arrowTranslateY.value }, { translateY: bobY.value }],
+  }));
+
+  return (
+    <View style={[hintStyles.container, { bottom: bottomInset + 90 }]} pointerEvents="none">
+      <Animated.Text style={[hintStyles.text, textStyle]}>
+        Tap here to start!
+      </Animated.Text>
+      <Animated.View style={[hintStyles.arrowWrap, arrowStyle]}>
+        <Svg width={60} height={50} viewBox="0 0 60 50">
+          <Path
+            d="M10 4 C18 4, 30 6, 38 16 C46 26, 48 36, 46 44"
+            stroke={Colors.light.accent}
+            strokeWidth={2}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray="4,3"
+          />
+          <Path
+            d="M40 40 L46 46 L50 38"
+            stroke={Colors.light.accent}
+            strokeWidth={2.2}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </Animated.View>
+    </View>
+  );
+}
+
+const hintStyles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    right: 16,
+    alignItems: "flex-end",
+  },
+  text: {
+    fontFamily: "Caveat_500Medium",
+    fontSize: 20,
+    color: Colors.light.accent,
+    marginBottom: -2,
+    transform: [{ rotate: "-3deg" }],
+  },
+  arrowWrap: {
+    marginRight: 6,
+  },
+});
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
@@ -100,6 +190,10 @@ export default function GalleryScreen() {
           onRefresh={refresh}
           refreshing={isLoading}
         />
+      )}
+
+      {postcards.length === 0 && !isLoading && (
+        <HandwrittenHint bottomInset={bottomInset} />
       )}
 
       <Pressable
