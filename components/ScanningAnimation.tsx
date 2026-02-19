@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
+import { View, StyleSheet, Dimensions, Platform } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -22,11 +22,7 @@ const IMAGE_SCALE = 1.35;
 const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
 const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
 
-const GRID_COLS = 12;
-const GRID_ROWS = Math.round((CARD_HEIGHT / CARD_WIDTH) * GRID_COLS);
-const CELL_W = CARD_WIDTH / GRID_COLS;
-const CELL_H = CARD_HEIGHT / GRID_ROWS;
-const CELL_GAP = 1;
+const FLICKER_COUNT = Platform.OS === "web" ? 24 : 16;
 
 const BLOCK_COLORS = [
   "rgba(99, 102, 241, 0.5)",
@@ -71,33 +67,37 @@ function generateTextBlockConfigs(count: number): TextBlockConfig[] {
   return configs;
 }
 
-interface FlickeringCellConfig {
-  col: number;
-  row: number;
+interface FlickerParticleConfig {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   delay: number;
   onDuration: number;
   offDuration: number;
   maxOpacity: number;
 }
 
-function generateFlickerConfigs(): FlickeringCellConfig[] {
-  const configs: FlickeringCellConfig[] = [];
-  for (let r = 0; r < GRID_ROWS; r++) {
-    for (let c = 0; c < GRID_COLS; c++) {
-      configs.push({
-        col: c,
-        row: r,
-        delay: Math.random() * 3000,
-        onDuration: 300 + Math.random() * 800,
-        offDuration: 400 + Math.random() * 2200,
-        maxOpacity: 0.06 + Math.random() * 0.1,
-      });
-    }
+function generateFlickerParticles(): FlickerParticleConfig[] {
+  const configs: FlickerParticleConfig[] = [];
+  for (let i = 0; i < FLICKER_COUNT; i++) {
+    const w = 12 + Math.random() * 30;
+    const h = 8 + Math.random() * 20;
+    configs.push({
+      x: Math.random() * (CARD_WIDTH - w),
+      y: Math.random() * (CARD_HEIGHT - h),
+      w,
+      h,
+      delay: Math.random() * 4000,
+      onDuration: 250 + Math.random() * 700,
+      offDuration: 600 + Math.random() * 2500,
+      maxOpacity: 0.08 + Math.random() * 0.12,
+    });
   }
   return configs;
 }
 
-function FlickeringCell({ config }: { config: FlickeringCellConfig }) {
+function FlickerParticle({ config }: { config: FlickerParticleConfig }) {
   const opacity = useSharedValue(0);
 
   useEffect(() => {
@@ -105,9 +105,9 @@ function FlickeringCell({ config }: { config: FlickeringCellConfig }) {
       config.delay,
       withRepeat(
         withSequence(
-          withTiming(config.maxOpacity, { duration: config.onDuration * 0.3, easing: Easing.out(Easing.quad) }),
-          withTiming(config.maxOpacity * 0.6, { duration: config.onDuration * 0.7 }),
-          withTiming(0, { duration: config.onDuration * 0.2, easing: Easing.in(Easing.quad) }),
+          withTiming(config.maxOpacity, { duration: config.onDuration * 0.4, easing: Easing.out(Easing.quad) }),
+          withTiming(config.maxOpacity * 0.5, { duration: config.onDuration * 0.6 }),
+          withTiming(0, { duration: config.onDuration * 0.3, easing: Easing.in(Easing.quad) }),
           withTiming(0, { duration: config.offDuration })
         ),
         -1,
@@ -126,11 +126,11 @@ function FlickeringCell({ config }: { config: FlickeringCellConfig }) {
       style={[
         {
           position: "absolute",
-          left: config.col * CELL_W + CELL_GAP,
-          top: config.row * CELL_H + CELL_GAP,
-          width: CELL_W - CELL_GAP * 2,
-          height: CELL_H - CELL_GAP * 2,
-          borderRadius: 2,
+          left: config.x,
+          top: config.y,
+          width: config.w,
+          height: config.h,
+          borderRadius: 3,
           backgroundColor: Colors.light.accent,
         },
         animatedStyle,
@@ -221,7 +221,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const contrastOpacity = useSharedValue(0);
 
   const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
-  const flickerConfigs = useMemo(() => generateFlickerConfigs(), []);
+  const flickerConfigs = useMemo(() => generateFlickerParticles(), []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
@@ -378,7 +378,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
         <View style={styles.overlayContainer} pointerEvents="none">
           {flickerConfigs.map((config, i) => (
-            <FlickeringCell key={`fc${i}`} config={config} />
+            <FlickerParticle key={`fp${i}`} config={config} />
           ))}
         </View>
 
