@@ -478,7 +478,8 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH + 120,
     height: CARD_HEIGHT + 120,
     tintColor: Colors.light.accent,
-  },
+    filter: "invert(1) contrast(1.8)",
+  } as any,
   scanLinesOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
