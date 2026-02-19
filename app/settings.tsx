@@ -105,7 +105,9 @@ export default function SettingsScreen() {
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={() => {
+          if (router.canGoBack()) router.back(); else router.replace("/");
+        }} hitSlop={12}>
           <Ionicons name="close" size={24} color={Colors.light.textSecondary} />
         </Pressable>
       </View>

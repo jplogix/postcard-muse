@@ -227,7 +227,7 @@ export default function AddPostcardScreen() {
 
   const isProcessing = processing !== "idle" && processing !== "error";
 
-  if (isProcessing || processing === "done") {
+  if (isProcessing) {
     const scanImage = backImage?.uri || frontImage?.uri || "";
     return (
       <View style={[styles.container, { paddingTop: topInset }]}>
@@ -365,7 +365,13 @@ export default function AddPostcardScreen() {
       <MeshGradientBackground />
 
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/");
+          }
+        }} hitSlop={12}>
           <Ionicons name="close" size={24} color={Colors.light.textSecondary} />
         </Pressable>
         <Text style={styles.headerTitle}>Scan Postcard</Text>

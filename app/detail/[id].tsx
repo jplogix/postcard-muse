@@ -262,7 +262,7 @@ export default function DetailScreen() {
       const confirmed = window.confirm("Delete this postcard? This cannot be undone.");
       if (!confirmed) return;
       await removePostcard(postcard.id);
-      router.back();
+      if (router.canGoBack()) router.back(); else router.replace("/");
       return;
     }
     Alert.alert("Delete Postcard", "This will permanently remove this postcard from your collection.", [
@@ -273,7 +273,7 @@ export default function DetailScreen() {
         onPress: async () => {
           await removePostcard(postcard.id);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          router.back();
+          if (router.canGoBack()) router.back(); else router.replace("/");
         },
       },
     ]);
@@ -306,7 +306,9 @@ export default function DetailScreen() {
       <MeshGradientBackground />
 
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={() => {
+          if (router.canGoBack()) router.back(); else router.replace("/");
+        }} hitSlop={12}>
           <Ionicons name="close" size={24} color={Colors.light.textSecondary} />
         </Pressable>
         <Pressable onPress={handleDelete} hitSlop={12}>
