@@ -100,30 +100,107 @@ function computeWordTimings(words: string[], totalDurationMs: number): number[] 
   });
 }
 
-async function generateElevenLabsTTS(text: string, outPath: string): Promise<number> {
-  const audio = await elevenlabs.textToSpeech.convert(ELEVENLABS_VOICE_ID, {
-    text,
-    modelId: ELEVENLABS_MODEL,
-    outputFormat: "mp3_44100_128",
+interface WordTiming {
+  word: string;
+  startMs: number;
+  endMs: number;
+}
+
+interface TTSResult {
+  durationMs: number;
+  wordTimings: WordTiming[];
+}
+
+function characterAlignmentToWordTimings(
+  characters: string[],
+  startTimes: number[],
+  endTimes: number[]
+): WordTiming[] {
+  const words: WordTiming[] = [];
+  let currentWord = "";
+  let wordStart: number | null = null;
+  let wordEnd = 0;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    if (char.trim()) {
+      if (wordStart === null) {
+        wordStart = startTimes[i];
+      }
+      currentWord += char;
+      wordEnd = endTimes[i];
+    } else {
+      if (currentWord && wordStart !== null) {
+        words.push({
+          word: currentWord,
+          startMs: Math.round(wordStart * 1000),
+          endMs: Math.round(wordEnd * 1000),
+        });
+        currentWord = "";
+        wordStart = null;
+      }
+    }
+  }
+
+  if (currentWord && wordStart !== null) {
+    words.push({
+      word: currentWord,
+      startMs: Math.round(wordStart * 1000),
+      endMs: Math.round(wordEnd * 1000),
+    });
+  }
+
+  return words;
+}
+
+async function generateElevenLabsTTS(text: string, outPath: string): Promise<TTSResult> {
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}/with-timestamps`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "xi-api-key": process.env.ELEVENLABS_API_KEY!,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      model_id: ELEVENLABS_MODEL,
+      output_format: "mp3_44100_128",
+    }),
   });
 
-  const reader = (audio as ReadableStream<Uint8Array>).getReader();
-  const chunks: Uint8Array[] = [];
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`ElevenLabs API error ${response.status}: ${errText}`);
   }
-  const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
-  const buffer = Buffer.alloc(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    buffer.set(chunk, offset);
-    offset += chunk.length;
-  }
-  fs.writeFileSync(outPath, buffer);
 
-  return estimateMp3DurationMs(outPath);
+  const result = await response.json() as {
+    audio_base64: string;
+    alignment?: {
+      characters: string[];
+      character_start_times_seconds: number[];
+      character_end_times_seconds: number[];
+    };
+  };
+
+  const audioBuffer = Buffer.from(result.audio_base64, "base64");
+  fs.writeFileSync(outPath, audioBuffer);
+
+  const durationMs = estimateMp3DurationMs(outPath);
+
+  let wordTimings: WordTiming[] = [];
+  if (result.alignment) {
+    wordTimings = characterAlignmentToWordTimings(
+      result.alignment.characters,
+      result.alignment.character_start_times_seconds,
+      result.alignment.character_end_times_seconds
+    );
+  }
+
+  const alignPath = outPath.replace(/\.mp3$/, ".json");
+  fs.writeFileSync(alignPath, JSON.stringify({ durationMs, wordTimings }));
+
+  return { durationMs, wordTimings };
 }
 
 function computeHomography(
@@ -189,17 +266,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const cacheKey = hashText(text);
       const mp3Path = path.join(TTS_CACHE_DIR, `${cacheKey}.mp3`);
+      const alignPath = path.join(TTS_CACHE_DIR, `${cacheKey}.json`);
 
       let durationMs: number;
-      if (fs.existsSync(mp3Path)) {
-        durationMs = estimateMp3DurationMs(mp3Path);
+      let wordTimings: WordTiming[] = [];
+
+      if (fs.existsSync(mp3Path) && fs.existsSync(alignPath)) {
+        const cached = JSON.parse(fs.readFileSync(alignPath, "utf-8"));
+        durationMs = cached.durationMs;
+        wordTimings = cached.wordTimings || [];
       } else {
-        durationMs = await generateElevenLabsTTS(text, mp3Path);
+        const result = await generateElevenLabsTTS(text, mp3Path);
+        durationMs = result.durationMs;
+        wordTimings = result.wordTimings;
       }
 
-      const wordTimings = words?.length
-        ? computeWordTimings(words, durationMs)
-        : undefined;
+      if (wordTimings.length === 0 && words?.length) {
+        const estimatedTimings = computeWordTimings(words, durationMs);
+        let cumulative = 0;
+        wordTimings = words.map((w: string, i: number) => {
+          const startMs = cumulative;
+          cumulative += estimatedTimings[i];
+          return { word: w, startMs, endMs: cumulative };
+        });
+      }
 
       res.json({ audioUrl: `/api/tts-audio/${cacheKey}`, durationMs, wordTimings });
     } catch (error: any) {
