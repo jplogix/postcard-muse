@@ -66,6 +66,7 @@ export default function AddPostcardScreen() {
   const [processing, setProcessing] = useState<ProcessingState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [cropPending, setCropPending] = useState<CropPending | null>(null);
+  const [showSamples, setShowSamples] = useState(false);
 
   const startCrop = useCallback((asset: ImagePicker.ImagePickerAsset, side: "front" | "back") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -174,7 +175,7 @@ export default function AddPostcardScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       setTimeout(() => {
-        if (router.canGoBack()) router.back(); else router.replace("/");
+        router.replace(`/detail/${postcard.id}`);
       }, 800);
     } catch (err: any) {
       console.error("Sample processing error:", err);
@@ -257,11 +258,7 @@ export default function AddPostcardScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       setTimeout(() => {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace("/");
-        }
+        router.replace(`/detail/${postcard.id}`);
       }, 800);
     } catch (err: any) {
       console.error("Processing error:", err);
@@ -446,38 +443,53 @@ export default function AddPostcardScreen() {
           <Text style={styles.langValue}>{targetLanguage}</Text>
         </View>
 
-        <View style={styles.sampleDivider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or try a sample</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sampleRow}
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowSamples(!showSamples);
+          }}
+          style={({ pressed }) => [
+            styles.trySampleBtn,
+            pressed && { opacity: 0.85 },
+          ]}
         >
-          {samplePostcards.map((sample) => (
-            <Pressable
-              key={sample.id}
-              onPress={() => processSample(sample)}
-              style={({ pressed }) => [
-                styles.sampleCard,
-                pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-              ]}
-            >
-              <Image
-                source={sample.frontImage}
-                style={styles.sampleImage}
-                contentFit="cover"
-              />
-              <View style={styles.sampleInfo}>
-                <Text style={styles.sampleTitle} numberOfLines={1}>{sample.title}</Text>
-                <Text style={styles.sampleLang} numberOfLines={1}>{sample.language}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <Feather name="gift" size={16} color={Colors.light.accent} />
+          <Text style={styles.trySampleText}>Try a Sample</Text>
+          <Ionicons
+            name={showSamples ? "chevron-up" : "chevron-down"}
+            size={16}
+            color={Colors.light.textMuted}
+          />
+        </Pressable>
+
+        {showSamples && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sampleRow}
+          >
+            {samplePostcards.map((sample) => (
+              <Pressable
+                key={sample.id}
+                onPress={() => processSample(sample)}
+                style={({ pressed }) => [
+                  styles.sampleCard,
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                ]}
+              >
+                <Image
+                  source={sample.frontImage}
+                  style={styles.sampleImage}
+                  contentFit="cover"
+                />
+                <View style={styles.sampleInfo}>
+                  <Text style={styles.sampleTitle} numberOfLines={1}>{sample.title}</Text>
+                  <Text style={styles.sampleLang} numberOfLines={1}>{sample.language}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: bottomInset + 16 }]}>
@@ -670,23 +682,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     color: Colors.light.accent,
   },
-  sampleDivider: {
+  trySampleBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 28,
-    marginBottom: 16,
-    gap: 12,
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 24,
+    marginBottom: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(79, 70, 229, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(79, 70, 229, 0.12)",
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.light.slate200,
-  },
-  dividerText: {
-    fontSize: 12,
+  trySampleText: {
+    fontSize: 14,
     fontFamily: "Inter_500Medium",
-    color: Colors.light.textMuted,
-    letterSpacing: 0.3,
+    color: Colors.light.accent,
   },
   sampleRow: {
     gap: 12,

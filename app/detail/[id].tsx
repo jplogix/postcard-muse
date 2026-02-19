@@ -462,13 +462,20 @@ export default function DetailScreen() {
                   />
                 </Pressable>
               )}
-              <AnimatedText
-                words={postcard.words}
-                currentWordIndex={currentWordIndex}
-                isPlaying={isPlaying}
-                hasPlayed={hasPlayed}
-                wordTimings={wordTimingsRef.current}
-              />
+              {!isPlaying && !hasPlayed ? (
+                <View style={styles.playHintContainer}>
+                  <Ionicons name="play-circle-outline" size={28} color={Colors.light.textMuted} />
+                  <Text style={styles.playHintText}>Press play to start</Text>
+                </View>
+              ) : (
+                <AnimatedText
+                  words={postcard.words}
+                  currentWordIndex={currentWordIndex}
+                  isPlaying={isPlaying}
+                  hasPlayed={hasPlayed}
+                  wordTimings={wordTimingsRef.current}
+                />
+              )}
               <Animated.View
                 style={[styles.replayOverlay, replayOverlayStyle]}
                 pointerEvents={hasPlayed && !isPlaying ? "auto" : "none"}
@@ -726,6 +733,18 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.glassBorderCard,
     minHeight: 80,
     overflow: "hidden",
+  },
+  playHintContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  playHintText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
+    letterSpacing: 0.2,
   },
   originalSection: {
     marginHorizontal: 24,
