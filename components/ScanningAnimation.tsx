@@ -378,7 +378,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
     <View style={styles.container}>
       <Animated.View style={[styles.glowRing, glowStyle]}>
         <LinearGradient
-          colors={["rgba(99, 102, 241, 0.2)", "rgba(236, 72, 153, 0.15)", "transparent"]}
+          colors={["rgba(34, 211, 238, 0.2)", "rgba(99, 102, 241, 0.15)", "transparent"]}
           style={StyleSheet.absoluteFill}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
@@ -388,9 +388,11 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
       <View style={styles.cardContainer}>
         <Animated.Image
           source={{ uri: imageUri }}
-          style={[styles.cardImage, imageStyle]}
+          style={[styles.cardImage, styles.xrayImage, imageStyle]}
           resizeMode="cover"
         />
+
+        <View style={styles.xrayTint} pointerEvents="none" />
 
         <TVStaticOverlay />
 
@@ -404,7 +406,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
 
         <Animated.View style={[styles.scanLine, scanLineStyle]}>
           <LinearGradient
-            colors={["transparent", Colors.light.accent, "transparent"]}
+            colors={["transparent", "#22D3EE", "transparent"]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={StyleSheet.absoluteFill}
@@ -412,7 +414,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
         </Animated.View>
 
         <LinearGradient
-          colors={["rgba(99, 102, 241, 0.1)", "transparent", "rgba(236, 72, 153, 0.1)"]}
+          colors={["rgba(34, 211, 238, 0.12)", "transparent", "rgba(99, 102, 241, 0.1)"]}
           style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -433,7 +435,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   );
 }
 
-const CORNER = { position: "absolute" as const, width: 20, height: 20, borderColor: Colors.light.accent };
+const CORNER = { position: "absolute" as const, width: 20, height: 20, borderColor: "#22D3EE" };
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
@@ -453,8 +455,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(99, 102, 241, 0.3)",
-    shadowColor: Colors.light.accent,
+    borderColor: "rgba(34, 211, 238, 0.3)",
+    shadowColor: "#22D3EE",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
@@ -464,6 +466,14 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+  xrayImage: {
+    filter: "invert(1) contrast(1.4) brightness(1.1) saturate(0.15)",
+  } as any,
+  xrayTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(34, 211, 238, 0.08)",
+    mixBlendMode: "screen",
+  } as any,
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
   },
@@ -477,7 +487,7 @@ const styles = StyleSheet.create({
     left: -60,
     width: CARD_WIDTH + 120,
     height: CARD_HEIGHT + 120,
-    tintColor: Colors.light.accent,
+    tintColor: "#22D3EE",
     filter: "invert(1) contrast(1.8)",
   } as any,
   scanLinesOverlay: {
@@ -504,12 +514,12 @@ const styles = StyleSheet.create({
     marginTop: 28,
     fontSize: 14,
     fontFamily: "Inter_500Medium",
-    color: Colors.light.accent,
+    color: "#22D3EE",
     letterSpacing: 0.3,
   },
   glitchOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(99, 102, 241, 0.4)",
+    backgroundColor: "rgba(34, 211, 238, 0.4)",
     mixBlendMode: "difference" as any,
   },
   cornerTL: { ...CORNER, top: 8, left: 8, borderTopWidth: 2, borderLeftWidth: 2 },
