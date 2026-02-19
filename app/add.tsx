@@ -199,7 +199,11 @@ export default function AddPostcardScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       setTimeout(() => {
-        router.back();
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace("/");
+        }
       }, 800);
     } catch (err: any) {
       console.error("Processing error:", err);
