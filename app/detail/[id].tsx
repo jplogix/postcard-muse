@@ -81,29 +81,56 @@ export default function DetailScreen() {
     }
   }, []);
 
+  const bgmFadeRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const finishPlayback = useCallback(() => {
     stopSync();
     setIsPlaying(false);
     setHasPlayed(true);
     const wordCount = postcard?.words?.length || 0;
     if (wordCount > 0) setCurrentWordIndex(wordCount - 1);
-    replayOverlayOpacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.quad) });
-    try { bgmPlayer.pause(); } catch {}
-  }, [stopSync, postcard, replayOverlayOpacity, bgmPlayer]);
+
+    if (backgroundMusic && bgmPlayer && bgmPlayer.playing) {
+      const fadeDuration = 3000;
+      const steps = 30;
+      const stepMs = fadeDuration / steps;
+      const startVol = bgmPlayer.volume || 0.12;
+      let step = 0;
+      if (bgmFadeRef.current) clearInterval(bgmFadeRef.current);
+      bgmFadeRef.current = setInterval(() => {
+        step++;
+        const progress = step / steps;
+        try { bgmPlayer.volume = startVol * (1 - progress); } catch {}
+        if (step >= steps) {
+          if (bgmFadeRef.current) clearInterval(bgmFadeRef.current);
+          bgmFadeRef.current = null;
+          try { bgmPlayer.pause(); bgmPlayer.volume = 0.12; } catch {}
+        }
+      }, stepMs);
+      setTimeout(() => {
+        replayOverlayOpacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.quad) });
+      }, fadeDuration);
+    } else {
+      try { bgmPlayer.pause(); } catch {}
+      replayOverlayOpacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.quad) });
+    }
+  }, [stopSync, postcard, replayOverlayOpacity, bgmPlayer, backgroundMusic]);
 
   const resetPlayback = useCallback(() => {
     stopSync();
+    if (bgmFadeRef.current) { clearInterval(bgmFadeRef.current); bgmFadeRef.current = null; }
     seekingRef.current = false;
     setIsPlaying(false);
     setHasPlayed(false);
     setCurrentWordIndex(-1);
     replayOverlayOpacity.value = withTiming(0, { duration: 250 });
-    try { bgmPlayer.pause(); } catch {}
+    try { bgmPlayer.pause(); bgmPlayer.volume = 0.12; } catch {}
   }, [stopSync, replayOverlayOpacity, bgmPlayer]);
 
   useEffect(() => {
     return () => {
       stopSync();
+      if (bgmFadeRef.current) { clearInterval(bgmFadeRef.current); bgmFadeRef.current = null; }
       try { bgmPlayer.pause(); } catch {}
     };
   }, [stopSync, bgmPlayer]);
