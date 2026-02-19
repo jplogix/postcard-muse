@@ -158,7 +158,7 @@ export default function DetailScreen() {
     player.volume = 1;
     setIsPlaying(true);
 
-    if (audioSource) {
+    if (audioSource && wordTimingsRef.current && wordTimingsRef.current.length > 0) {
       try {
         seekingRef.current = true;
         player.seekTo(0);
@@ -190,7 +190,13 @@ export default function DetailScreen() {
       if (data.wordTimings) {
         wordTimingsRef.current = data.wordTimings;
       }
-      setAudioSource(fullAudioUrl);
+
+      if (audioSource) {
+        player.seekTo(0);
+        setTimeout(() => player.play(), 100);
+      } else {
+        setAudioSource(fullAudioUrl);
+      }
 
       if (updatePostcard) {
         updatePostcard(postcard.id, {
