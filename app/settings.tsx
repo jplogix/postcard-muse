@@ -87,6 +87,8 @@ export default function SettingsScreen() {
     setTargetLanguage,
     excludeAddress,
     setExcludeAddress,
+    backgroundMusic,
+    setBackgroundMusic,
     postcards,
   } = usePostcards();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
@@ -181,6 +183,25 @@ export default function SettingsScreen() {
             onValueChange={(val) => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setExcludeAddress(val);
+            }}
+          />
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>
+          PLAYBACK
+        </Text>
+        <View style={styles.optionRow}>
+          <View style={styles.optionInfo}>
+            <Text style={styles.optionLabel}>Background music</Text>
+            <Text style={styles.optionDesc}>
+              Play a soft piano melody behind the spoken text
+            </Text>
+          </View>
+          <CustomToggle
+            value={backgroundMusic}
+            onValueChange={(val) => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setBackgroundMusic(val);
             }}
           />
         </View>

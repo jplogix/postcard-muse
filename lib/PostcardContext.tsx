@@ -6,8 +6,10 @@ interface PostcardContextValue {
   isLoading: boolean;
   targetLanguage: string;
   excludeAddress: boolean;
+  backgroundMusic: boolean;
   setTargetLanguage: (lang: string) => Promise<void>;
   setExcludeAddress: (val: boolean) => Promise<void>;
+  setBackgroundMusic: (val: boolean) => Promise<void>;
   addPostcard: (postcard: Postcard) => Promise<void>;
   updatePostcard: (id: string, updates: Partial<Postcard>) => Promise<void>;
   removePostcard: (id: string) => Promise<void>;
@@ -21,6 +23,7 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [targetLanguage, setTargetLang] = useState("English");
   const [excludeAddress, setExcludeAddr] = useState(true);
+  const [backgroundMusic, setBgMusic] = useState(true);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -29,6 +32,7 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
       setPostcards(cards);
       setTargetLang(settings.targetLanguage);
       setExcludeAddr(settings.excludeAddress);
+      setBgMusic(settings.backgroundMusic);
     } catch (err) {
       console.error("Failed to load data:", err);
     } finally {
@@ -65,20 +69,27 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
     await saveSettings({ excludeAddress: val });
   }, []);
 
+  const setBackgroundMusic = useCallback(async (val: boolean) => {
+    setBgMusic(val);
+    await saveSettings({ backgroundMusic: val });
+  }, []);
+
   const value = useMemo(
     () => ({
       postcards,
       isLoading,
       targetLanguage,
       excludeAddress,
+      backgroundMusic,
       setTargetLanguage,
       setExcludeAddress,
+      setBackgroundMusic,
       addPostcard,
       updatePostcard,
       removePostcard,
       refresh: loadData,
     }),
-    [postcards, isLoading, targetLanguage, excludeAddress, setTargetLanguage, setExcludeAddress, addPostcard, updatePostcard, removePostcard, loadData]
+    [postcards, isLoading, targetLanguage, excludeAddress, backgroundMusic, setTargetLanguage, setExcludeAddress, setBackgroundMusic, addPostcard, updatePostcard, removePostcard, loadData]
   );
 
   return <PostcardContext.Provider value={value}>{children}</PostcardContext.Provider>;

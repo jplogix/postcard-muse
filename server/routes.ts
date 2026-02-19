@@ -308,6 +308,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(mp3Path);
   });
 
+  const BGM_PATH = path.join(TTS_CACHE_DIR, "bgm-piano.mp3");
+
+  function generatePianoWav(): Buffer {
+    const sampleRate = 44100;
+    const durationSec = 24;
+    const totalSamples = sampleRate * durationSec;
+    const samples = new Float32Array(totalSamples);
+
+    const noteFreqs: Record<string, number> = {
+      C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+      C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+      C5: 523.25, E5: 659.25, G5: 783.99,
+    };
+
+    function pianoNote(freq: number, t: number, noteDur: number): number {
+      const env = Math.exp(-t / (noteDur * 0.4)) * Math.max(0, 1 - t / noteDur);
+      const fundamental = Math.sin(2 * Math.PI * freq * t) * 0.5;
+      const h2 = Math.sin(2 * Math.PI * freq * 2 * t) * 0.25 * Math.exp(-t / (noteDur * 0.25));
+      const h3 = Math.sin(2 * Math.PI * freq * 3 * t) * 0.12 * Math.exp(-t / (noteDur * 0.18));
+      const h4 = Math.sin(2 * Math.PI * freq * 4 * t) * 0.06 * Math.exp(-t / (noteDur * 0.12));
+      return (fundamental + h2 + h3 + h4) * env;
+    }
+
+    const chords = [
+      { notes: ["C4", "E4", "G4", "C5"], time: 0, dur: 3.0 },
+      { notes: ["A3", "C4", "E4"], time: 2.8, dur: 3.0 },
+      { notes: ["F3", "A3", "C4", "F4"], time: 5.6, dur: 3.0 },
+      { notes: ["G3", "B3", "D4", "G4"], time: 8.4, dur: 3.0 },
+      { notes: ["C4", "E4", "G4", "E5"], time: 11.0, dur: 3.5 },
+      { notes: ["D4", "F4", "A4"], time: 14.0, dur: 2.8 },
+      { notes: ["E3", "G3", "B3", "E4"], time: 16.8, dur: 3.0 },
+      { notes: ["A3", "C4", "E4", "A4"], time: 19.6, dur: 3.5 },
+    ];
+
+    for (const chord of chords) {
+      const startSample = Math.floor(chord.time * sampleRate);
+      const chordSamples = Math.floor(chord.dur * sampleRate);
+      for (const noteName of chord.notes) {
+        const freq = noteFreqs[noteName];
+        if (!freq) continue;
+        for (let i = 0; i < chordSamples && startSample + i < totalSamples; i++) {
+          const t = i / sampleRate;
+          samples[startSample + i] += pianoNote(freq, t, chord.dur) * 0.15;
+        }
+      }
+    }
+
+    const melody = [
+      { note: "E5", time: 1.0, dur: 0.8 },
+      { note: "G4", time: 1.8, dur: 0.6 },
+      { note: "C5", time: 3.5, dur: 1.0 },
+      { note: "A4", time: 6.0, dur: 0.8 },
+      { note: "G4", time: 7.0, dur: 0.7 },
+      { note: "E4", time: 8.8, dur: 1.2 },
+      { note: "G4", time: 11.5, dur: 0.9 },
+      { note: "E5", time: 12.6, dur: 1.0 },
+      { note: "D4", time: 14.5, dur: 0.8 },
+      { note: "C4", time: 15.5, dur: 1.0 },
+      { note: "B3", time: 17.2, dur: 0.8 },
+      { note: "E4", time: 18.5, dur: 1.2 },
+      { note: "C5", time: 20.2, dur: 1.5 },
+    ];
+
+    for (const m of melody) {
+      const freq = noteFreqs[m.note];
+      if (!freq) continue;
+      const startSample = Math.floor(m.time * sampleRate);
+      const noteSamples = Math.floor(m.dur * sampleRate);
+      for (let i = 0; i < noteSamples && startSample + i < totalSamples; i++) {
+        const t = i / sampleRate;
+        samples[startSample + i] += pianoNote(freq, t, m.dur) * 0.2;
+      }
+    }
+
+    const fadeIn = Math.floor(0.5 * sampleRate);
+    const fadeOut = Math.floor(2.0 * sampleRate);
+    for (let i = 0; i < fadeIn; i++) {
+      samples[i] *= i / fadeIn;
+    }
+    for (let i = 0; i < fadeOut; i++) {
+      const idx = totalSamples - fadeOut + i;
+      if (idx >= 0) samples[idx] *= 1 - i / fadeOut;
+    }
+
+    const reverbDelay = Math.floor(0.08 * sampleRate);
+    const reverbDecay = 0.3;
+    for (let i = reverbDelay; i < totalSamples; i++) {
+      samples[i] += samples[i - reverbDelay] * reverbDecay;
+    }
+
+    let maxAmp = 0;
+    for (let i = 0; i < totalSamples; i++) {
+      maxAmp = Math.max(maxAmp, Math.abs(samples[i]));
+    }
+    const normFactor = maxAmp > 0 ? 0.8 / maxAmp : 1;
+
+    const int16Samples = new Int16Array(totalSamples);
+    for (let i = 0; i < totalSamples; i++) {
+      int16Samples[i] = Math.max(-32768, Math.min(32767, Math.floor(samples[i] * normFactor * 32767)));
+    }
+
+    const dataSize = int16Samples.length * 2;
+    const wavBuffer = Buffer.alloc(44 + dataSize);
+    wavBuffer.write("RIFF", 0);
+    wavBuffer.writeUInt32LE(36 + dataSize, 4);
+    wavBuffer.write("WAVE", 8);
+    wavBuffer.write("fmt ", 12);
+    wavBuffer.writeUInt32LE(16, 16);
+    wavBuffer.writeUInt16LE(1, 20);
+    wavBuffer.writeUInt16LE(1, 22);
+    wavBuffer.writeUInt32LE(sampleRate, 24);
+    wavBuffer.writeUInt32LE(sampleRate * 2, 28);
+    wavBuffer.writeUInt16LE(2, 32);
+    wavBuffer.writeUInt16LE(16, 34);
+    wavBuffer.write("data", 36);
+    wavBuffer.writeUInt32LE(dataSize, 40);
+    for (let i = 0; i < int16Samples.length; i++) {
+      wavBuffer.writeInt16LE(int16Samples[i], 44 + i * 2);
+    }
+
+    return wavBuffer;
+  }
+
+  function ensureBgmExists(): void {
+    const wavPath = BGM_PATH.replace(/\.mp3$/, ".wav");
+    if (fs.existsSync(wavPath)) return;
+
+    console.log("Generating ambient piano background music...");
+    const wavData = generatePianoWav();
+    fs.writeFileSync(wavPath, wavData);
+    console.log("Background piano music generated and cached.");
+  }
+
+  app.get("/api/bgm-piano", (_req: Request, res: Response) => {
+    try {
+      ensureBgmExists();
+      const wavPath = BGM_PATH.replace(/\.mp3$/, ".wav");
+      res.setHeader("Content-Type", "audio/wav");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.sendFile(wavPath);
+    } catch (error: any) {
+      console.error("BGM error:", error?.message || error);
+      res.status(500).json({ error: "Failed to generate background music" });
+    }
+  });
+
   app.post("/api/perspective-crop", async (req: Request, res: Response) => {
     try {
       const { imageBase64, corners, sourceWidth, sourceHeight } = req.body;

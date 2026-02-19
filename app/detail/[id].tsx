@@ -34,7 +34,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function DetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { postcards, removePostcard } = usePostcards();
+  const { postcards, removePostcard, backgroundMusic } = usePostcards();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -58,8 +58,21 @@ export default function DetailScreen() {
     opacity: replayOverlayOpacity.value,
   }));
 
+  const bgmUrl = backgroundMusic
+    ? new URL("/api/bgm-piano", baseUrl).toString()
+    : null;
+
   const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
+
+  const bgmPlayer = useAudioPlayer(bgmUrl);
+
+  useEffect(() => {
+    if (bgmPlayer) {
+      bgmPlayer.volume = 0.12;
+      bgmPlayer.loop = true;
+    }
+  }, [bgmPlayer]);
 
   const stopSync = useCallback(() => {
     if (syncFrameRef.current) {
@@ -75,7 +88,8 @@ export default function DetailScreen() {
     const wordCount = postcard?.words?.length || 0;
     if (wordCount > 0) setCurrentWordIndex(wordCount - 1);
     replayOverlayOpacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.quad) });
-  }, [stopSync, postcard, replayOverlayOpacity]);
+    try { bgmPlayer.pause(); } catch {}
+  }, [stopSync, postcard, replayOverlayOpacity, bgmPlayer]);
 
   const resetPlayback = useCallback(() => {
     stopSync();
@@ -84,11 +98,15 @@ export default function DetailScreen() {
     setHasPlayed(false);
     setCurrentWordIndex(-1);
     replayOverlayOpacity.value = withTiming(0, { duration: 250 });
-  }, [stopSync, replayOverlayOpacity]);
+    try { bgmPlayer.pause(); } catch {}
+  }, [stopSync, replayOverlayOpacity, bgmPlayer]);
 
   useEffect(() => {
-    return () => stopSync();
-  }, [stopSync]);
+    return () => {
+      stopSync();
+      try { bgmPlayer.pause(); } catch {}
+    };
+  }, [stopSync, bgmPlayer]);
 
   useEffect(() => {
     if (isPlaying && status.playing && seekingRef.current) {
@@ -128,6 +146,17 @@ export default function DetailScreen() {
   }, [status.playing, isPlaying, audioDurationMs, postcard, player, stopSync]);
 
   useEffect(() => {
+    if (isPlaying && status.playing && backgroundMusic && bgmPlayer) {
+      try {
+        const bgmStatus = bgmPlayer.playing;
+        if (!bgmStatus) {
+          bgmPlayer.play();
+        }
+      } catch {}
+    }
+  }, [isPlaying, status.playing, backgroundMusic, bgmPlayer]);
+
+  useEffect(() => {
     if (isPlaying && !status.playing && status.currentTime > 0 && !seekingRef.current) {
       finishPlayback();
     }
@@ -139,7 +168,10 @@ export default function DetailScreen() {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     player.volume = newMuted ? 0 : 1;
-  }, [isMuted, player]);
+    if (bgmPlayer) {
+      bgmPlayer.volume = newMuted ? 0 : 0.12;
+    }
+  }, [isMuted, player, bgmPlayer]);
 
   const playAudio = useCallback(async () => {
     if (!postcard?.translatedText || !postcard.words?.length) return;
@@ -165,11 +197,19 @@ export default function DetailScreen() {
         setTimeout(() => {
           seekingRef.current = false;
           player.play();
+          if (backgroundMusic && bgmPlayer) {
+            bgmPlayer.seekTo(0);
+            bgmPlayer.play();
+          }
         }, 150);
       } catch (e) {
         console.log("Replay seek error:", e);
         seekingRef.current = false;
         player.play();
+        if (backgroundMusic && bgmPlayer) {
+          bgmPlayer.seekTo(0);
+          bgmPlayer.play();
+        }
       }
       return;
     }
@@ -193,7 +233,13 @@ export default function DetailScreen() {
 
       if (audioSource) {
         player.seekTo(0);
-        setTimeout(() => player.play(), 100);
+        setTimeout(() => {
+          player.play();
+          if (backgroundMusic && bgmPlayer) {
+            bgmPlayer.seekTo(0);
+            bgmPlayer.play();
+          }
+        }, 100);
       } else {
         setAudioSource(fullAudioUrl);
       }
@@ -208,7 +254,7 @@ export default function DetailScreen() {
       console.error("TTS error:", err);
       resetPlayback();
     }
-  }, [postcard, isPlaying, player, finishPlayback, resetPlayback, audioSource, baseUrl, updatePostcard]);
+  }, [postcard, isPlaying, player, finishPlayback, resetPlayback, audioSource, baseUrl, updatePostcard, backgroundMusic, bgmPlayer]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;

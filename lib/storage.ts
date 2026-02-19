@@ -86,13 +86,14 @@ export async function deletePostcard(id: string): Promise<void> {
 export interface AppSettings {
   targetLanguage: string;
   excludeAddress: boolean;
+  backgroundMusic: boolean;
 }
 
 export async function getSettings(): Promise<AppSettings> {
   const data = await AsyncStorage.getItem(SETTINGS_KEY);
-  if (!data) return { targetLanguage: "English", excludeAddress: true };
+  if (!data) return { targetLanguage: "English", excludeAddress: true, backgroundMusic: true };
   const parsed = JSON.parse(data);
-  return { targetLanguage: parsed.targetLanguage || "English", excludeAddress: parsed.excludeAddress ?? true };
+  return { targetLanguage: parsed.targetLanguage || "English", excludeAddress: parsed.excludeAddress ?? true, backgroundMusic: parsed.backgroundMusic ?? true };
 }
 
 export async function saveSettings(settings: Partial<AppSettings>): Promise<void> {
