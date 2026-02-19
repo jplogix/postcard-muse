@@ -52,7 +52,7 @@ export default function DetailScreen() {
     : null;
   const [audioSource, setAudioSource] = useState<string | null>(initialAudioUrl);
   const [audioDurationMs, setAudioDurationMs] = useState(postcard?.audioDurationMs || 0);
-  const wordTimingsRef = useRef<number[] | null>(null);
+  const wordTimingsRef = useRef<{ word: string; startMs: number; endMs: number }[] | null>(null);
   const replayOverlayOpacity = useSharedValue(0);
   const replayOverlayStyle = useAnimatedStyle(() => ({
     opacity: replayOverlayOpacity.value,
@@ -100,24 +100,14 @@ export default function DetailScreen() {
     const duration = audioDurationMs || Math.max((postcard?.translatedText?.length || 20) * 65, 2000);
     const timings = wordTimingsRef.current;
 
-    let cumulativeMs: number[] | null = null;
-    if (timings && timings.length === words.length) {
-      cumulativeMs = [];
-      let sum = 0;
-      for (let i = 0; i < timings.length; i++) {
-        sum += timings[i];
-        cumulativeMs.push(sum);
-      }
-    }
-
     const syncLoop = () => {
       const currentMs = (player as any).currentTime * 1000;
 
       let wordIdx: number;
-      if (cumulativeMs) {
+      if (timings && timings.length > 0) {
         wordIdx = 0;
-        for (let i = 0; i < cumulativeMs.length; i++) {
-          if (currentMs >= (i === 0 ? 0 : cumulativeMs[i - 1])) {
+        for (let i = 0; i < timings.length; i++) {
+          if (currentMs >= timings[i].startMs) {
             wordIdx = i;
           }
         }
