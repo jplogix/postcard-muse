@@ -18,7 +18,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as Crypto from "expo-crypto";
 import { Asset } from "expo-asset";
-import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+
+
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import { saveImagePermanently, imageToBase64, Postcard } from "@/lib/storage";
@@ -393,34 +394,20 @@ export default function AddPostcardScreen() {
                 onPress={() => takePhoto(side)}
                 style={({ pressed }) => [pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
               >
-                {isLiquidGlassAvailable() ? (
-                  <GlassView style={styles.glassBtn} tintColor={Colors.light.accent}>
-                    <Ionicons name="camera" size={18} color={Colors.light.accent} />
-                    <Text style={styles.glassBtnText}>Camera</Text>
-                  </GlassView>
-                ) : (
-                  <View style={styles.glassBtnFallback}>
-                    <Ionicons name="camera" size={18} color={Colors.light.accent} />
-                    <Text style={styles.glassBtnText}>Camera</Text>
-                  </View>
-                )}
+                <View style={styles.glassBtnFallback}>
+                  <Ionicons name="camera" size={18} color={Colors.light.accent} />
+                  <Text style={styles.glassBtnText}>Camera</Text>
+                </View>
               </Pressable>
             )}
             <Pressable
               onPress={() => pickImage(side)}
               style={({ pressed }) => [pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
             >
-              {isLiquidGlassAvailable() ? (
-                <GlassView style={styles.glassBtn} tintColor={Colors.light.accent}>
-                  <Ionicons name="image" size={18} color={Colors.light.accent} />
-                  <Text style={styles.glassBtnText}>Upload</Text>
-                </GlassView>
-              ) : (
-                <View style={styles.glassBtnFallback}>
-                  <Ionicons name="image" size={18} color={Colors.light.accent} />
-                  <Text style={styles.glassBtnText}>Upload</Text>
-                </View>
-              )}
+              <View style={styles.glassBtnFallback}>
+                <Ionicons name="image" size={18} color={Colors.light.accent} />
+                <Text style={styles.glassBtnText}>Upload</Text>
+              </View>
             </Pressable>
           </View>
         </View>
@@ -622,15 +609,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginTop: 4,
-  },
-  glassBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 16,
-    overflow: "hidden",
   },
   glassBtnFallback: {
     flexDirection: "row",
