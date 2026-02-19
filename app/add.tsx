@@ -8,6 +8,7 @@ import {
   ScrollView,
   Platform,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { router } from "expo-router";
@@ -69,6 +70,7 @@ export default function AddPostcardScreen() {
   const [cropPending, setCropPending] = useState<CropPending | null>(null);
   const [showSamples, setShowSamples] = useState(false);
   const [selectedSample, setSelectedSample] = useState<SamplePostcard | null>(null);
+  const [loadingSample, setLoadingSample] = useState(false);
 
   const startCrop = useCallback((asset: ImagePicker.ImagePickerAsset, side: "front" | "back") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -135,6 +137,7 @@ export default function AddPostcardScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedSample(sample);
     setShowSamples(false);
+    setLoadingSample(true);
 
     try {
       const [frontAsset, backAsset] = await Promise.all([
@@ -147,6 +150,9 @@ export default function AddPostcardScreen() {
       setBackImage({ uri: backUri, width: 1600, height: 1000 });
     } catch (err) {
       console.error("Failed to load sample images:", err);
+      setSelectedSample(null);
+    } finally {
+      setLoadingSample(false);
     }
   }, []);
 
@@ -375,6 +381,17 @@ export default function AddPostcardScreen() {
             >
               <Ionicons name="image" size={14} color="#FFFFFF" />
             </Pressable>
+          </View>
+        </View>
+      );
+    }
+
+    if (loadingSample) {
+      return (
+        <View style={styles.imagePickerBox}>
+          <View style={styles.placeholderContent}>
+            <ActivityIndicator size="small" color={Colors.light.accent} />
+            <Text style={styles.placeholderSub}>Loading sample...</Text>
           </View>
         </View>
       );
