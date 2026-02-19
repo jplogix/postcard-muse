@@ -1,0 +1,149 @@
+Use ElevenLabs timestamps + animated text reveal
+Why?
+
+If you rely on just audio duration, your sync will drift.
+If you use timestamps from ElevenLabs, it will feel professionally aligned.
+
+Step 1 — Get timestamps from ElevenLabs
+
+Use their API with alignment metadata enabled.
+You’ll receive per-word timestamps like:
+
+{
+  "words": [
+    { "text": "Hello", "start": 0.0, "end": 0.4 },
+    { "text": "world", "start": 0.5, "end": 0.9 }
+  ]
+}
+
+This is gold. Now you know exactly when each word is spoken.
+
+🧠 Step 2 — Play audio in Expo
+
+Use:
+
+expo install expo-av
+
+Then:
+
+import { Audio } from 'expo-av'
+
+const sound = new Audio.Sound()
+await sound.loadAsync({ uri: audioUrl })
+await sound.playAsync()
+🎬 Step 3 — Animate text based on playback position
+
+Use:
+
+npm install react-native-reanimated
+
+Then track playback time:
+
+sound.setOnPlaybackStatusUpdate((status) => {
+  if (status.isLoaded) {
+    setCurrentTime(status.positionMillis / 1000)
+  }
+})
+
+Now compare currentTime with each word's start time.
+
+✍️ Rendering Word-by-Word
+{words.map((word, i) => (
+  <Animated.Text
+    key={i}
+    style={[
+      styles.text,
+      {
+        opacity: currentTime >= word.start ? 1 : 0,
+      },
+    ]}
+  >
+    {word.text + " "}
+  </Animated.Text>
+))}
+
+This gives you perfect sync.
+
+✍️ Making It Look Handwritten
+
+Use a handwritten font like:
+
+Caveat
+
+Pacifico
+
+Indie Flower
+
+In Expo:
+
+expo install expo-font
+
+Load Google font:
+
+import * as Font from 'expo-font'
+
+Then style:
+
+fontFamily: 'Caveat-Regular',
+fontSize: 28,
+✨ Want REAL “Writing Stroke” Effect?
+
+If you want the letters to draw like ink appearing (not just fade-in), you have two better options:
+
+Option A — Mask Reveal Animation (Smooth & Native)
+
+Use:
+
+@react-native-masked-view/masked-view
+react-native-svg
+react-native-reanimated
+
+Animate a mask sliding over the text to simulate writing.
+
+This looks clean and works well in Expo.
+
+Option B — SVG Path Drawing (Ultra Realistic)
+
+Convert text to SVG paths and animate stroke:
+
+<AnimatedPath
+  strokeDasharray={length}
+  strokeDashoffset={animatedValue}
+/>
+
+This gives true pen-drawing animation.
+
+Downside: More setup.
+
+🧩 Which Should You Use?
+Goal	Recommendation
+Simple & clean	Word fade-in with timestamps
+Premium storytelling app	Mask reveal
+“AI scanning handwritten prophecy” cinematic look	SVG stroke animation
+⚡ Performance Tip (Important)
+
+Do NOT re-render full paragraph on every millisecond update.
+
+Instead:
+
+Store active word index
+
+Only update when index changes
+
+Much smoother on mobile.
+
+🏆 My Personal Recommendation For You
+
+Since you're building polished apps:
+
+Use:
+
+ElevenLabs timestamps
+
+expo-av for playback
+
+react-native-reanimated
+
+Mask reveal for handwriting illusion
+
+That combo feels modern and premium.
