@@ -6,7 +6,15 @@ Postcard Muse is a mobile application that serves as a digital gallery for physi
 
 The project is a full-stack Expo + Express application. The Expo frontend handles the mobile UI and local data persistence, while the Express backend proxies AI requests to Google Gemini for postcard processing.
 
-## Recent Changes (Feb 18, 2026)
+## Recent Changes (Feb 19, 2026)
+
+- Switched TTS from ElevenLabs SDK `convert()` to raw HTTP `/with-timestamps` endpoint for real word-level alignment data
+- Character-level timestamps from ElevenLabs are aggregated into word-level `{word, startMs, endMs}` objects
+- Alignment JSON cached alongside MP3 files in `/tmp/tts-cache/` for instant replay
+- Detail screen sync loop uses real `startMs` per word instead of cumulative syllable estimates
+- Fallback to syllable-based estimation if alignment data unavailable
+
+## Previous Changes (Feb 18, 2026)
 
 - Added perspective crop mode to ImageCropper: toggle between standard rectangular crop and perspective correction with 4 independently draggable corners
 - Server-side perspective transform via `POST /api/perspective-crop` using sharp + homography matrix for bilinear interpolation
