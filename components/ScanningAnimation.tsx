@@ -15,6 +15,7 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 
+const isWeb = Platform.OS === "web";
 const noiseTexture = require("@/assets/images/noise.png");
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -450,13 +451,13 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  xrayImage: {
-    filter: "invert(1) contrast(1.4) brightness(1.1) saturate(0.15)",
-  } as any,
+  xrayImage: isWeb
+    ? { filter: "invert(1) contrast(1.4) brightness(1.1) saturate(0.15)" } as any
+    : { opacity: 0.85, tintColor: CYAN } as any,
   xrayTint: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(34, 211, 238, 0.08)",
-    mixBlendMode: "screen",
+    ...(isWeb ? { mixBlendMode: "screen" } : {}),
   } as any,
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -472,7 +473,7 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH + 120,
     height: CARD_HEIGHT + 120,
     tintColor: CYAN,
-    filter: "invert(1) contrast(1.8)",
+    ...(isWeb ? { filter: "invert(1) contrast(1.8)" } : {}),
   } as any,
   scanLinesOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -520,8 +521,8 @@ const styles = StyleSheet.create({
   glitchOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(34, 211, 238, 0.4)",
-    mixBlendMode: "difference" as any,
-  },
+    ...(isWeb ? { mixBlendMode: "difference" } : {}),
+  } as any,
   cornerTL: { ...CORNER, top: 8, left: 8, borderTopWidth: 2, borderLeftWidth: 2 },
   cornerTR: { ...CORNER, top: 8, right: 8, borderTopWidth: 2, borderRightWidth: 2 },
   cornerBL: { ...CORNER, bottom: 8, left: 8, borderBottomWidth: 2, borderLeftWidth: 2 },

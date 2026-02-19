@@ -24,7 +24,6 @@ import { usePostcards } from "@/lib/PostcardContext";
 import { saveImagePermanently, imageToBase64, Postcard } from "@/lib/storage";
 import { apiRequest } from "@/lib/query-client";
 import ScanningAnimation from "@/components/ScanningAnimation";
-import ImageScanner from "@/components/ImageScanner";
 import LoadingJokes from "@/components/LoadingJokes";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 import ImageCropper from "@/components/ImageCropper";
@@ -292,23 +291,10 @@ export default function AddPostcardScreen() {
       <View style={[styles.container, { paddingTop: topInset }]}>
         <MeshGradientBackground />
         <View style={styles.processingContainer}>
-          {Platform.OS === "web" ? (
-            <ScanningAnimation
-              imageUri={scanImage}
-              statusText={STATUS_MESSAGES[processing]}
-            />
-          ) : (
-            <View style={styles.scannerWrapper}>
-              <ImageScanner
-                imageUrl={scanImage}
-                scanSpeed={0.15}
-                glowColor={[0.31, 0.27, 0.9]}
-              />
-              <Animated.Text style={styles.statusText}>
-                {STATUS_MESSAGES[processing]}
-              </Animated.Text>
-            </View>
-          )}
+          <ScanningAnimation
+            imageUri={scanImage}
+            statusText={STATUS_MESSAGES[processing]}
+          />
           <LoadingJokes isVisible={processing !== "done"} />
           {processing === "done" && (
             <View style={styles.doneContainer}>
@@ -778,16 +764,5 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.success,
     alignItems: "center",
     justifyContent: "center",
-  },
-  scannerWrapper: {
-    width: SCREEN_WIDTH * 0.85,
-    alignItems: "center",
-  },
-  statusText: {
-    marginTop: 20,
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.accent,
-    letterSpacing: 0.3,
   },
 });
