@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useCallback } from "react";
 import { View, StyleSheet, Dimensions, Platform } from "react-native";
 import Animated, {
   useSharedValue,
@@ -20,9 +20,10 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
 const NUM_TEXT_BLOCKS = 6;
-const IMAGE_SCALE = 1.35;
-const PAN_RANGE_X = CARD_WIDTH * (IMAGE_SCALE - 1) * 0.45;
-const PAN_RANGE_Y = CARD_HEIGHT * (IMAGE_SCALE - 1) * 0.45;
+const BASE_SCALE = 1.2;
+const ZOOM_SCALE = 1.8;
+const ZOOM_PAN_X = CARD_WIDTH * 0.25;
+const ZOOM_PAN_Y = CARD_HEIGHT * 0.25;
 
 const SCANLINE_COUNT = Math.floor(CARD_HEIGHT / 3);
 
@@ -232,38 +233,45 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const scanLineY = useSharedValue(0);
   const glowOpacity = useSharedValue(0.3);
   const textOpacity = useSharedValue(0);
+  const imgScale = useSharedValue(BASE_SCALE);
   const panX = useSharedValue(0);
   const panY = useSharedValue(0);
   const glitchOpacity = useSharedValue(0);
   const contrastOpacity = useSharedValue(0);
+  const zoomTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
+
+  const doZoomCycle = useCallback(() => {
+    const tx = (Math.random() - 0.5) * 2 * ZOOM_PAN_X;
+    const ty = (Math.random() - 0.5) * 2 * ZOOM_PAN_Y;
+    const zoomLevel = ZOOM_SCALE + (Math.random() - 0.5) * 0.3;
+
+    imgScale.value = withSequence(
+      withTiming(zoomLevel, { duration: 700, easing: Easing.out(Easing.cubic) }),
+      withTiming(zoomLevel, { duration: 1200 }),
+      withTiming(BASE_SCALE, { duration: 600, easing: Easing.inOut(Easing.cubic) }),
+    );
+    panX.value = withSequence(
+      withTiming(tx, { duration: 700, easing: Easing.out(Easing.cubic) }),
+      withTiming(tx, { duration: 1200 }),
+      withTiming(0, { duration: 600, easing: Easing.inOut(Easing.cubic) }),
+    );
+    panY.value = withSequence(
+      withTiming(ty, { duration: 700, easing: Easing.out(Easing.cubic) }),
+      withTiming(ty, { duration: 1200 }),
+      withTiming(0, { duration: 600, easing: Easing.inOut(Easing.cubic) }),
+    );
+
+    const holdBase = 600 + Math.random() * 800;
+    zoomTimer.current = setTimeout(doZoomCycle, 2500 + holdBase);
+  }, []);
 
   useEffect(() => {
     scanLineY.value = withRepeat(
       withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.quad) }),
       -1,
       true
-    );
-
-    panX.value = withRepeat(
-      withSequence(
-        withTiming(-PAN_RANGE_X * 0.6, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(PAN_RANGE_X * 0.5, { duration: 4000, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(0, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
-      ),
-      -1,
-      false
-    );
-
-    panY.value = withRepeat(
-      withSequence(
-        withTiming(-PAN_RANGE_Y * 0.5, { duration: 4000, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(PAN_RANGE_Y * 0.5, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
-        withTiming(0, { duration: 3500, easing: Easing.inOut(Easing.cubic) }),
-      ),
-      -1,
-      false
     );
 
     glowOpacity.value = withRepeat(
@@ -334,20 +342,24 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
       false
     );
 
+    zoomTimer.current = setTimeout(doZoomCycle, 1200);
+
     return () => {
       cancelAnimation(scanLineY);
+      cancelAnimation(imgScale);
       cancelAnimation(panX);
       cancelAnimation(panY);
       cancelAnimation(glowOpacity);
       cancelAnimation(textOpacity);
       cancelAnimation(glitchOpacity);
       cancelAnimation(contrastOpacity);
+      if (zoomTimer.current) clearTimeout(zoomTimer.current);
     };
   }, []);
 
   const imageStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: IMAGE_SCALE },
+      { scale: imgScale.value },
       { translateX: panX.value },
       { translateY: panY.value },
     ],
