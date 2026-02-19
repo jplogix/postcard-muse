@@ -48,11 +48,13 @@ export default function DetailScreen() {
 
   const baseUrl = getApiUrl();
   const initialAudioUrl = postcard?.audioPath
-    ? new URL(postcard.audioPath, baseUrl).toString()
+    ? (postcard.audioPath.startsWith("file://") || postcard.audioPath.startsWith("http"))
+      ? postcard.audioPath
+      : new URL(postcard.audioPath, baseUrl).toString()
     : null;
   const [audioSource, setAudioSource] = useState<string | null>(initialAudioUrl);
   const [audioDurationMs, setAudioDurationMs] = useState(postcard?.audioDurationMs || 0);
-  const wordTimingsRef = useRef<{ word: string; startMs: number; endMs: number }[] | null>(null);
+  const wordTimingsRef = useRef<{ word: string; startMs: number; endMs: number }[] | null>(postcard?.wordTimings || null);
   const replayOverlayOpacity = useSharedValue(0);
   const replayOverlayStyle = useAnimatedStyle(() => ({
     opacity: replayOverlayOpacity.value,

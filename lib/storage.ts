@@ -3,6 +3,12 @@ import { File, Paths, Directory } from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import { Platform } from "react-native";
 
+export interface WordTiming {
+  word: string;
+  startMs: number;
+  endMs: number;
+}
+
 export interface Postcard {
   id: string;
   frontImageUri: string;
@@ -15,6 +21,7 @@ export interface Postcard {
   words: string[];
   audioPath?: string;
   audioDurationMs?: number;
+  wordTimings?: WordTiming[];
   createdAt: number;
 }
 

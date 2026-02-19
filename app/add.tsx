@@ -134,46 +134,22 @@ export default function AddPostcardScreen() {
     setErrorMsg("");
 
     try {
-      const [frontAsset, backAsset] = await Promise.all([
+      const [frontAsset, backAsset, audioAsset] = await Promise.all([
         Asset.fromModule(sample.frontImage).downloadAsync(),
         Asset.fromModule(sample.backImage).downloadAsync(),
-      ]);
-
-      const frontUri = frontAsset.localUri || frontAsset.uri;
-      const backUri = backAsset.localUri || backAsset.uri;
-
-      const [frontBase64, backBase64] = await Promise.all([
-        imageToBase64(frontUri),
-        imageToBase64(backUri),
+        Asset.fromModule(sample.audioAsset).downloadAsync(),
       ]);
 
       setProcessing("extracting");
 
-      const response = await apiRequest("POST", "/api/process-postcard", {
-        frontImageBase64: frontBase64,
-        backImageBase64: backBase64,
-        targetLanguage,
-        excludeAddress,
-      });
+      const frontUri = frontAsset.localUri || frontAsset.uri;
+      const backUri = backAsset.localUri || backAsset.uri;
+      const audioUri = audioAsset.localUri || audioAsset.uri;
 
+      await new Promise((r) => setTimeout(r, 800));
       setProcessing("translating");
-      const data = await response.json();
-
+      await new Promise((r) => setTimeout(r, 600));
       setProcessing("saving");
-
-      let audioPath: string | undefined;
-      let audioDurationMs: number | undefined;
-      const translatedText = data.translatedText || "";
-      if (translatedText.length > 0) {
-        try {
-          const ttsResponse = await apiRequest("POST", "/api/tts", { text: translatedText });
-          const ttsData = await ttsResponse.json();
-          audioPath = ttsData.audioUrl;
-          audioDurationMs = ttsData.durationMs;
-        } catch (e) {
-          console.log("TTS pre-generation skipped:", e);
-        }
-      }
 
       const savedFront = await saveImagePermanently(frontUri);
       const savedBack = await saveImagePermanently(backUri);
@@ -182,14 +158,15 @@ export default function AddPostcardScreen() {
         id: Crypto.randomUUID(),
         frontImageUri: savedFront,
         backImageUri: savedBack,
-        originalText: data.originalText || "",
-        translatedText,
-        detectedLanguage: data.detectedLanguage || "Unknown",
-        targetLanguage,
-        description: data.description || "",
-        words: data.words || [],
-        audioPath,
-        audioDurationMs,
+        originalText: sample.originalText,
+        translatedText: sample.translatedText,
+        detectedLanguage: sample.detectedLanguage,
+        targetLanguage: "English",
+        description: sample.description,
+        words: sample.words,
+        audioPath: audioUri,
+        audioDurationMs: sample.durationMs,
+        wordTimings: sample.wordTimings,
         createdAt: Date.now(),
       };
 
@@ -206,7 +183,7 @@ export default function AddPostcardScreen() {
       setProcessing("error");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  }, [targetLanguage, excludeAddress, addPostcard]);
+  }, [addPostcard]);
 
   const processPostcard = useCallback(async () => {
     if (!backImage) {
