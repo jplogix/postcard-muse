@@ -96,7 +96,7 @@ function HandwrittenHint({ bottomInset }: { bottomInset: number }) {
 const hintStyles = StyleSheet.create({
   container: {
     position: "absolute",
-    right: 16,
+    right: Platform.OS === "web" ? 16 : 21,
     alignItems: "flex-end",
   },
   text: {
