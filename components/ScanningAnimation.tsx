@@ -453,11 +453,10 @@ const styles = StyleSheet.create({
   },
   xrayImage: isWeb
     ? { filter: "invert(1) contrast(1.4) brightness(1.1) saturate(0.15)" } as any
-    : { opacity: 0.85, tintColor: CYAN } as any,
+    : { opacity: 0.7 } as any,
   xrayTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(34, 211, 238, 0.08)",
-    ...(isWeb ? { mixBlendMode: "screen" } : {}),
+    backgroundColor: isWeb ? "rgba(34, 211, 238, 0.08)" : "rgba(10, 30, 50, 0.55)",
   } as any,
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -472,8 +471,9 @@ const styles = StyleSheet.create({
     left: -60,
     width: CARD_WIDTH + 120,
     height: CARD_HEIGHT + 120,
-    tintColor: CYAN,
-    ...(isWeb ? { filter: "invert(1) contrast(1.8)" } : {}),
+    ...(isWeb
+      ? { tintColor: CYAN, filter: "invert(1) contrast(1.8)" }
+      : { opacity: 0.15 }),
   } as any,
   scanLinesOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   glitchOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(34, 211, 238, 0.4)",
+    backgroundColor: isWeb ? "rgba(34, 211, 238, 0.4)" : "rgba(34, 211, 238, 0.15)",
     ...(isWeb ? { mixBlendMode: "difference" } : {}),
   } as any,
   cornerTL: { ...CORNER, top: 8, left: 8, borderTopWidth: 2, borderLeftWidth: 2 },
