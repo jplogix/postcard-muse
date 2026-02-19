@@ -8,6 +8,13 @@ The project is a full-stack Expo + Express application. The Expo frontend handle
 
 ## Recent Changes (Feb 19, 2026)
 
+- Added pre-packaged sample postcards (Paris/French, Tokyo/Japanese, Santorini/German) for demo without physical postcards
+- Sample images stored in `assets/samples/`, data module in `lib/samplePostcards.ts`
+- Uses `Asset.fromModule()` to resolve bundled images, converts to base64 for API processing
+- Background music: server-side programmatic piano synthesis (WAV), plays at 12% volume during TTS with 3s fade-out after reading ends
+- BGM toggle in Settings, synced with TTS playback lifecycle
+- Strengthened AI address exclusion prompt with CRITICAL RULE placement and reinforced instructions
+- Safe navigation fallback (`router.replace("/")`) across all screens when `router.back()` is unavailable
 - Switched TTS from ElevenLabs SDK `convert()` to raw HTTP `/with-timestamps` endpoint for real word-level alignment data
 - Character-level timestamps from ElevenLabs are aggregated into word-level `{word, startMs, endMs}` objects
 - Alignment JSON cached alongside MP3 files in `/tmp/tts-cache/` for instant replay
