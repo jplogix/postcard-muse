@@ -6,6 +6,9 @@ import Animated, {
   withDelay,
   withSpring,
   withTiming,
+  withRepeat,
+  withSequence,
+  cancelAnimation,
 } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 
@@ -47,17 +50,65 @@ function AnimatedChar({ char, index, staggerMs, initialDelay, textStyle, trigger
   );
 }
 
+function BlinkingCursor({ delay, textStyle }: { delay: number; textStyle?: TextStyle }) {
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 0 }),
+          withTiming(1, { duration: 400 }),
+          withTiming(0, { duration: 100 }),
+          withTiming(0, { duration: 400 }),
+        ),
+        -1,
+        false
+      )
+    );
+
+    return () => cancelAnimation(opacity);
+  }, [delay]);
+
+  const cursorStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  const fontSize = textStyle?.fontSize ?? 24;
+  const lineHeight = textStyle?.lineHeight ?? 36;
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width: 2.5,
+          height: fontSize * 0.85,
+          backgroundColor: Colors.light.accent,
+          borderRadius: 1.5,
+          marginLeft: 1,
+          alignSelf: "center" as const,
+          marginTop: (lineHeight - fontSize * 0.85) / 2,
+        },
+        cursorStyle,
+      ]}
+    />
+  );
+}
+
 interface HandwritingAnimatorProps {
   text: string;
   textStyle?: TextStyle;
   delay?: number;
+  showCursor?: boolean;
 }
 
-export default function HandwritingAnimator({ text, textStyle, delay = 0 }: HandwritingAnimatorProps) {
+export default function HandwritingAnimator({ text, textStyle, delay = 0, showCursor = true }: HandwritingAnimatorProps) {
   const chars = useMemo(() => text.split(""), [text]);
   const staggerMs = 50;
   const initialDelayMs = delay * 40;
   const trigger = useMemo(() => Date.now(), [text]);
+  const totalAnimTime = initialDelayMs + chars.length * staggerMs;
 
   return (
     <View style={styles.container}>
@@ -72,6 +123,9 @@ export default function HandwritingAnimator({ text, textStyle, delay = 0 }: Hand
           trigger={trigger}
         />
       ))}
+      {showCursor && (
+        <BlinkingCursor delay={totalAnimTime * 0.3} textStyle={textStyle} />
+      )}
     </View>
   );
 }

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI Handwriting Scanner - Mobile App</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Caveat:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        /* Native App Reset */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #e4e4e7;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; /* Prevent pull-to-refresh */
+        }
+        
+        .handwritten {
+            font-family: 'Caveat', cursive;
+        }
+
+        /* Hide Scrollbar but allow scroll */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Scanner Beam Gradient */
+        .scan-beam {
+            background: linear-gradient(to bottom, 
+                rgba(56, 189, 248, 0) 0%, 
+                rgba(56, 189, 248, 0.5) 80%, 
+                rgba(56, 189, 248, 1) 100%);
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+        }
+
+        /* Dot Pattern Background */
+        .bg-dot-pattern {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Safe Area Utilities for Mobile */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .pt-safe {
+            padding-top: env(safe-area-inset-top);
+        }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col bg-black overflow-hidden relative selection:bg-blue-500/30">
+
+    <!-- Background Ambience -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute top-[-20%] left-[-20%] w-[80%] h-[60%] bg-blue-900/10 rounded-full blur-[100px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[50%] bg-purple-900/10 rounded-full blur-[100px]"></div>
+    </div>
+
+    <!-- Mobile Header (Native Style) -->
+    <header class="pt-safe px-4 h-24 flex items-end justify-between pb-3 bg-gradient-to-b from-black/80 to-transparent z-40 no-select">
+        <div class="flex items-center gap-3">
+            <button class="w-10 h-10 rounded-full bg-zinc-900/50 backdrop-blur border border-white/10 flex items-center justify-center active:scale-95 transition-transform text-zinc-300">
+                <iconify-icon icon="solar:arrow-left-linear" width="20"></iconify-icon>
+            </button>
+            <span class="text-base font-semibold tracking-tight text-white">Scanner</span>
+        </div>
+        <button class="w-10 h-10 rounded-full bg-zinc-900/50 backdrop-blur border border-white/10 flex items-center justify-center active:scale-95 transition-transform text-zinc-300">
+            <iconify-icon icon="solar:menu-dots-linear" width="20"></iconify-icon>
+        </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 relative flex flex-col w-full max-w-md mx-auto h-full">
+        
+        <!-- Viewport / Scanner Area -->
+        <div class="relative flex-1 bg-zinc-900/30 m-4 rounded-3xl overflow-hidden border border-white/5 shadow-2xl group no-select">
+            
+            <!-- Source Image -->
+            <div class="absolute inset-0 flex items-center justify-center bg-zinc-950" id="image-container">
+                <img 
+                    src="https://images.unsplash.com/photo-1517842645767-c639042777db?q=80&w=2070&auto=format&fit=crop" 
+                    alt="Handwritten Note" 
+                    class="object-cover w-full h-full opacity-60 grayscale transition-all duration-1000"
+                    id="source-image"
+                >
+                <div class="absolute inset-0 bg-dot-pattern opacity-20 pointer-events-none"></div>
+                
+                <!-- Overlay Elements -->
+                <div id="detection-layer" class="absolute inset-0 z-10 pointer-events-none"></div>
+                <div id="scanner-beam" class="absolute left-0 right-0 h-32 z-20 hidden scan-beam translate-y-[-100%] opacity-90 border-b-2 border-blue-400 mix-blend-screen"></div>
+
+                <!-- Empty State/Prompt -->
+                <div id="scan-prompt" class="absolute inset-0 flex flex-col items-center justify-center z-30 pointer-events-none transition-opacity duration-500">
+                    <div class="w-20 h-20 border border-white/20 rounded-xl flex items-center justify-center mb-4 bg-black/40 backdrop-blur-sm">
+                        <iconify-icon icon="solar:document-text-linear" class="text-3xl text-zinc-400"></iconify-icon>
+                    </div>
+                    <p class="text-sm font-medium text-zinc-300 tracking-tight">Align document within frame</p>
+                </div>
+            </div>
+
+            <!-- Result Overlay (Slides up like a Bottom Sheet) -->
+            <div id="result-sheet" class="absolute inset-0 bg-zinc-900/95 backdrop-blur-xl z-40 translate-y-[110%] transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col">
+                <!-- Drag Handle -->
+                <div class="h-6 w-full flex items-center justify-center shrink-0" id="close-result">
+                    <div class="w-12 h-1.5 rounded-full bg-zinc-700"></div>
+                </div>
+                
+                <!-- Toolbar -->
+                <div class="px-6 py-2 flex justify-between items-center border-b border-white/5 shrink-0">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Extracted Text</span>
+                    <div class="flex gap-2">
+                        <button class="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white active:scale-95 transition-all">
+                            <iconify-icon icon="solar:copy-linear" width="16"></iconify-icon>
+                        </button>
+                        <button class="p-2 bg-zinc-800 rounded-full text-zinc-400 hover:text-white active:scale-95 transition-all">
+                            <iconify-icon icon="solar:share-linear" width="16"></iconify-icon>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Text Content -->
+                <div class="flex-1 p-6 overflow-y-auto no-scrollbar">
+                    <div id="output-text" class="handwritten text-2xl text-zinc-100 leading-relaxed whitespace-pre-wrap"></div>
+                    <div id="cursor" class="inline-block w-2 h-6 bg-blue-500 ml-1 animate-pulse hidden rounded-sm align-middle"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Controls (Bottom) -->
+        <div class="pb-safe w-full px-6 pt-4 pb-8 z-50">
+            <!-- Processing Status -->
+            <div id="status-pill" class="mx-auto w-fit mb-6 px-4 py-2 bg-zinc-900/90 border border-white/10 rounded-full backdrop-blur flex items-center gap-3 opacity-0 translate-y-4 transition-all duration-300">
+                <iconify-icon icon="solar:restart-circle-linear" class="animate-spin text-blue-400 text-lg"></iconify-icon>
+                <span class="text-xs font-medium text-zinc-200 tracking-wide" id="status-text">Processing...</span>
+            </div>
+
+            <!-- Primary Action Button -->
+            <div class="flex items-center gap-4 justify-center">
+                <!-- Gallery Button -->
+                <button class="w-12 h-12 rounded-full bg-zinc-800/80 backdrop-blur border border-white/10 flex items-center justify-center text-zinc-400 active:scale-90 transition-all duration-200">
+                    <iconify-icon icon="solar:gallery-linear" width="20"></iconify-icon>
+                </button>
+
+                <!-- Shutter/Scan Button -->
+                <button id="scan-btn" class="group relative w-20 h-20 rounded-full border-4 border-white/20 bg-white/10 flex items-center justify-center active:scale-95 transition-all duration-200">
+                    <div class="absolute inset-1 rounded-full bg-white transition-all duration-300 group-active:scale-90" id="shutter-inner"></div>
+                    <!-- Icon inside shutter -->
+                    <iconify-icon icon="solar:scanner-linear" class="relative z-10 text-black text-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></iconify-icon>
+                </button>
+
+                <!-- Flash Button -->
+                <button class="w-12 h-12 rounded-full bg-zinc-800/80 backdrop-blur border border-white/10 flex items-center justify-center text-zinc-400 active:scale-90 transition-all duration-200">
+                    <iconify-icon icon="solar:flashlight-linear" width="20"></iconify-icon>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Data
+        const TARGET_TEXT = "Architecture Ideas:\n\n1. Use modular components for the UI.\n2. Implement dark mode by default.\n3. Ensure touch targets are >44px.\n\n— Needs review by Friday.";
+        
+        // DOM Elements
+        const scanBtn = document.getElementById('scan-btn');
+        const shutterInner = document.getElementById('shutter-inner');
+        const scannerBeam = document.getElementById('scanner-beam');
+        const sourceImage = document.getElementById('source-image');
+        const detectionLayer = document.getElementById('detection-layer');
+        const outputText = document.getElementById('output-text');
+        const cursor = document.getElementById('cursor');
+        const scanPrompt = document.getElementById('scan-prompt');
+        const statusPill = document.getElementById('status-pill');
+        const statusText = document.getElementById('status-text');
+        const resultSheet = document.getElementById('result-sheet');
+        const closeResult = document.getElementById('close-result');
+
+        let isScanning = false;
+
+        // Generate visual detection boxes
+        function createDetectionBox(yPos) {
+            const box = document.createElement('div');
+            const width = Math.floor(Math.random() * 30) + 20;
+            const left = Math.floor(Math.random() * 40) + 15;
+            
+            box.className = 'absolute border border-blue-400/80 bg-blue-400/20 rounded z-10';
+            box.style.left = `${left}%`;
+            box.style.top = `${yPos}%`;
+            box.style.width = `${width}%`;
+            box.style.height = '20px';
+            box.style.opacity = '0';
+            
+            detectionLayer.appendChild(box);
+
+            gsap.to(box, {
+                opacity: 1,
+                scale: 1,
+                duration: 0.1,
+                onComplete: () => {
+                    gsap.to(box, {
+                        opacity: 0,
+                        delay: 0.3,
+                        duration: 0.2,
+                        onComplete: () => box.remove()
+                    });
+                }
+            });
+        }
+
+        function typeWriter(text, element, speed = 30) {
+            let i = 0;
+            element.innerHTML = '';
+            cursor.classList.remove('hidden');
+            
+            function type() {
+                if (i < text.length) {
+                    const randomSpeed = speed + (Math.random() * 40 - 20);
+                    if (text.charAt(i) === '\n') {
+                        element.innerHTML += '<br/>';
+                    } else {
+                        element.innerHTML += text.charAt(i);
+                    }
+                    i++;
+                    // Auto scroll to bottom of text
+                    element.parentElement.scrollTop = element.parentElement.scrollHeight;
+                    setTimeout(type, randomSpeed);
+                } else {
+                    cursor.classList.add('hidden');
+                }
+            }
+            type();
+        }
+
+        // Close Result Sheet
+        closeResult.addEventListener('click', () => {
+            resultSheet.classList.add('translate-y-[110%]');
+            resultSheet.classList.remove('translate-y-0');
+            
+            // Reset UI State after delay
+            setTimeout(() => {
+                isScanning = false;
+                scanPrompt.style.opacity = '1';
+                shutterInner.classList.remove('scale-[0.4]', 'bg-red-500');
+                sourceImage.style.filter = 'grayscale(100%) opacity(0.6)';
+                sourceImage.style.transform = 'scale(1)';
+            }, 300);
+        });
+
+        // Main Scan Action
+        scanBtn.addEventListener('click', () => {
+            if (isScanning) return;
+            isScanning = true;
+            
+            // 1. Shutter Feedback
+            shutterInner.classList.add('scale-[0.4]', 'bg-red-500');
+            
+            // 2. Hide Prompt / Show Image
+            scanPrompt.style.opacity = '0';
+            gsap.to(sourceImage, { filter: 'grayscale(0%) opacity(1)', scale: 1.1, duration: 0.5 });
+            
+            // 3. Show Status
+            statusPill.classList.remove('opacity-0', 'translate-y-4');
+            statusText.innerText = 'Scanning...';
+
+            // 4. Scanner Beam Animation
+            scannerBeam.classList.remove('hidden');
+            const tl = gsap.timeline();
+
+            // Downward Scan
+            tl.fromTo(scannerBeam, 
+                { top: '0%', opacity: 0 },
+                { 
+                    top: '100%', 
+                    opacity: 1, 
+                    duration: 1.5, 
+                    ease: "power1.inOut",
+                    onUpdate: function() {
+                        if (Math.random() > 0.6) createDetectionBox(this.progress() * 90);
+                    }
+                }
+            );
+
+            // Upward Scan (Analysis)
+            tl.to(scannerBeam, {
+                top: '0%',
+                duration: 1.0,
+                ease: "power2.out",
+                onStart: () => statusText.innerText = 'Vectorizing...'
+            });
+
+            // Finish
+            tl.to(scannerBeam, {
+                opacity: 0,
+                duration: 0.2,
+                onComplete: () => {
+                    scannerBeam.classList.add('hidden');
+                    statusPill.classList.add('opacity-0', 'translate-y-4'); // Hide status
+                    
+                    // Show Result Sheet
+                    resultSheet.classList.remove('translate-y-[110%]');
+                    resultSheet.classList.add('translate-y-0');
+                    
+                    // Delay typing slightly for sheet animation
+                    setTimeout(() => {
+                        typeWriter(TARGET_TEXT, outputText);
+                    }, 400);
+                }
+            });
+        });
+
+    </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ import Animated, {
   Easing,
   interpolate,
   cancelAnimation,
+  useDerivedValue,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
@@ -19,103 +20,61 @@ const noiseTexture = require("@/assets/images/noise.png");
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH * 0.75;
 const CARD_HEIGHT = CARD_WIDTH * 0.65;
-const NUM_TEXT_BLOCKS = 6;
+const NUM_DETECTION_BOXES = 8;
 const BASE_SCALE = 1.2;
 const ZOOM_SCALE = 1.8;
 const ZOOM_PAN_X = CARD_WIDTH * 0.25;
 const ZOOM_PAN_Y = CARD_HEIGHT * 0.25;
+const BEAM_HEIGHT = CARD_HEIGHT * 0.35;
+const SCAN_DURATION = 2400;
 
 const SCANLINE_COUNT = Math.floor(CARD_HEIGHT / 3);
 
-const BLOCK_COLORS = [
-  "rgba(99, 102, 241, 0.5)",
-  "rgba(167, 139, 250, 0.5)",
-  "rgba(244, 114, 182, 0.45)",
-  "rgba(34, 211, 238, 0.45)",
-  "rgba(129, 140, 248, 0.5)",
-  "rgba(167, 139, 250, 0.45)",
-];
+const CYAN = "#22D3EE";
+const CYAN_30 = "rgba(34, 211, 238, 0.3)";
+const CYAN_50 = "rgba(34, 211, 238, 0.5)";
 
-interface TextBlockConfig {
+interface DetectionBoxConfig {
   x: number;
   y: number;
   width: number;
   height: number;
-  color: string;
-  delay: number;
-  cycleDuration: number;
 }
 
-function generateTextBlockConfigs(count: number): TextBlockConfig[] {
-  const configs: TextBlockConfig[] = [];
-  const margin = 16;
+function generateDetectionBoxes(count: number): DetectionBoxConfig[] {
+  const boxes: DetectionBoxConfig[] = [];
+  const margin = 14;
   const usableW = CARD_WIDTH - margin * 2;
   const usableH = CARD_HEIGHT - margin * 2;
 
   for (let i = 0; i < count; i++) {
-    const w = 40 + Math.random() * (usableW * 0.45);
-    const h = 8 + Math.random() * 14;
+    const w = 35 + Math.random() * (usableW * 0.4);
+    const h = 8 + Math.random() * 12;
     const x = margin + Math.random() * (usableW - w);
-    const y = margin + Math.random() * (usableH - h);
-    const stagger = i * 1800;
-    const cycleDuration = count * 1800;
+    const y = margin + (i / count) * usableH * 0.85 + Math.random() * (usableH * 0.1);
 
-    configs.push({
-      x, y, width: w, height: h,
-      color: BLOCK_COLORS[i % BLOCK_COLORS.length],
-      delay: stagger,
-      cycleDuration,
-    });
+    boxes.push({ x, y, width: w, height: h });
   }
-  return configs;
+  return boxes;
 }
 
-function TextBlockOutline({ config }: { config: TextBlockConfig }) {
-  const opacity = useSharedValue(0);
-  const scaleX = useSharedValue(0.3);
+function DetectionBox({ config, beamY }: { config: DetectionBoxConfig; beamY: { value: number } }) {
+  const beamTop = useDerivedValue(() => {
+    return beamY.value * (CARD_HEIGHT - BEAM_HEIGHT);
+  });
 
-  useEffect(() => {
-    const showDuration = 1200;
-    const hideDuration = config.cycleDuration - showDuration;
+  const animatedStyle = useAnimatedStyle(() => {
+    const beamBottom = beamTop.value + BEAM_HEIGHT;
+    const boxCenter = config.y + config.height / 2;
+    const isInBeam = boxCenter >= beamTop.value && boxCenter <= beamBottom;
+    const distFromCenter = Math.abs(boxCenter - (beamTop.value + BEAM_HEIGHT / 2)) / (BEAM_HEIGHT / 2);
+    const proximityOpacity = isInBeam ? interpolate(distFromCenter, [0, 0.6, 1], [0.9, 0.5, 0]) : 0;
 
-    opacity.value = withDelay(
-      config.delay,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration: 180, easing: Easing.out(Easing.quad) }),
-          withTiming(0.7, { duration: showDuration - 360 }),
-          withTiming(0, { duration: 180, easing: Easing.in(Easing.quad) }),
-          withTiming(0, { duration: hideDuration })
-        ),
-        -1,
-        false
-      )
-    );
-
-    scaleX.value = withDelay(
-      config.delay,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration: 250, easing: Easing.out(Easing.cubic) }),
-          withTiming(1, { duration: showDuration - 250 }),
-          withTiming(0.3, { duration: 180 }),
-          withTiming(0.3, { duration: config.cycleDuration - showDuration })
-        ),
-        -1,
-        false
-      )
-    );
-
-    return () => {
-      cancelAnimation(opacity);
-      cancelAnimation(scaleX);
+    return {
+      opacity: proximityOpacity,
+      transform: [{ scaleX: isInBeam ? 1 : 0.4 }],
     };
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scaleX: scaleX.value }],
-  }));
+  });
 
   return (
     <Animated.View
@@ -128,8 +87,8 @@ function TextBlockOutline({ config }: { config: TextBlockConfig }) {
           height: config.height,
           borderRadius: 3,
           borderWidth: 1.5,
-          borderColor: config.color,
-          backgroundColor: config.color.replace(/[\d.]+\)$/, "0.08)"),
+          borderColor: CYAN_50,
+          backgroundColor: "rgba(34, 211, 238, 0.08)",
         },
         animatedStyle,
       ]}
@@ -230,7 +189,7 @@ interface ScanningAnimationProps {
 }
 
 export default function ScanningAnimation({ imageUri, statusText }: ScanningAnimationProps) {
-  const scanLineY = useSharedValue(0);
+  const beamY = useSharedValue(0);
   const glowOpacity = useSharedValue(0.3);
   const textOpacity = useSharedValue(0);
   const imgScale = useSharedValue(BASE_SCALE);
@@ -240,7 +199,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   const contrastOpacity = useSharedValue(0);
   const zoomTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const textBlockConfigs = useMemo(() => generateTextBlockConfigs(NUM_TEXT_BLOCKS), []);
+  const detectionBoxes = useMemo(() => generateDetectionBoxes(NUM_DETECTION_BOXES), []);
 
   const doZoomCycle = useCallback(() => {
     const tx = (Math.random() - 0.5) * 2 * ZOOM_PAN_X;
@@ -268,10 +227,13 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   }, []);
 
   useEffect(() => {
-    scanLineY.value = withRepeat(
-      withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.quad) }),
+    beamY.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: SCAN_DURATION, easing: Easing.inOut(Easing.quad) }),
+        withTiming(0, { duration: SCAN_DURATION * 0.7, easing: Easing.inOut(Easing.quad) }),
+      ),
       -1,
-      true
+      false
     );
 
     glowOpacity.value = withRepeat(
@@ -345,7 +307,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
     zoomTimer.current = setTimeout(doZoomCycle, 1200);
 
     return () => {
-      cancelAnimation(scanLineY);
+      cancelAnimation(beamY);
       cancelAnimation(imgScale);
       cancelAnimation(panX);
       cancelAnimation(panY);
@@ -365,10 +327,13 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
     ],
   }));
 
-  const scanLineStyle = useAnimatedStyle(() => ({
-    top: interpolate(scanLineY.value, [0, 1], [0, CARD_HEIGHT - 2]),
-    opacity: interpolate(scanLineY.value, [0, 0.1, 0.9, 1], [0, 1, 1, 0]),
-  }));
+  const beamStyle = useAnimatedStyle(() => {
+    const top = beamY.value * (CARD_HEIGHT - BEAM_HEIGHT);
+    return {
+      top,
+      opacity: interpolate(beamY.value, [0, 0.05, 0.95, 1], [0.4, 1, 1, 0.4]),
+    };
+  });
 
   const glowStyle = useAnimatedStyle(() => ({
     opacity: glowOpacity.value,
@@ -409,20 +374,27 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
         <TVStaticOverlay />
 
         <View style={styles.overlayContainer}>
-          {textBlockConfigs.map((config, i) => (
-            <TextBlockOutline key={`tb${i}`} config={config} />
+          {detectionBoxes.map((config, i) => (
+            <DetectionBox key={`db${i}`} config={config} beamY={beamY} />
           ))}
         </View>
 
         <Animated.View style={[styles.contrastOverlay, contrastStyle]} pointerEvents="none" />
 
-        <Animated.View style={[styles.scanLine, scanLineStyle]}>
+        <Animated.View style={[styles.beam, beamStyle]} pointerEvents="none">
           <LinearGradient
-            colors={["transparent", "#22D3EE", "transparent"]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
+            colors={[
+              "rgba(34, 211, 238, 0)",
+              "rgba(34, 211, 238, 0.03)",
+              "rgba(34, 211, 238, 0.08)",
+              "rgba(34, 211, 238, 0.25)",
+              "rgba(34, 211, 238, 0.5)",
+              CYAN,
+            ]}
+            locations={[0, 0.2, 0.4, 0.7, 0.9, 1]}
             style={StyleSheet.absoluteFill}
           />
+          <View style={styles.beamEdge} />
         </Animated.View>
 
         <LinearGradient
@@ -447,7 +419,7 @@ export default function ScanningAnimation({ imageUri, statusText }: ScanningAnim
   );
 }
 
-const CORNER = { position: "absolute" as const, width: 20, height: 20, borderColor: "#22D3EE" };
+const CORNER = { position: "absolute" as const, width: 20, height: 20, borderColor: CYAN };
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
@@ -467,8 +439,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(34, 211, 238, 0.3)",
-    shadowColor: "#22D3EE",
+    borderColor: CYAN_30,
+    shadowColor: CYAN,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
@@ -499,7 +471,7 @@ const styles = StyleSheet.create({
     left: -60,
     width: CARD_WIDTH + 120,
     height: CARD_HEIGHT + 120,
-    tintColor: "#22D3EE",
+    tintColor: CYAN,
     filter: "invert(1) contrast(1.8)",
   } as any,
   scanLinesOverlay: {
@@ -516,17 +488,33 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.35)",
   },
-  scanLine: {
+  beam: {
     position: "absolute",
     left: 0,
     right: 0,
+    height: BEAM_HEIGHT,
+    shadowColor: CYAN,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 25,
+  },
+  beamEdge: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     height: 2,
+    backgroundColor: CYAN,
+    shadowColor: CYAN,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
   },
   statusText: {
     marginTop: 28,
     fontSize: 14,
     fontFamily: "Inter_500Medium",
-    color: "#22D3EE",
+    color: CYAN,
     letterSpacing: 0.3,
   },
   glitchOverlay: {
