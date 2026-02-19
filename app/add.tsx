@@ -17,6 +17,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as Crypto from "expo-crypto";
+import { Asset } from "expo-asset";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
@@ -27,6 +28,7 @@ import ImageScanner from "@/components/ImageScanner";
 import LoadingJokes from "@/components/LoadingJokes";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 import ImageCropper from "@/components/ImageCropper";
+import { samplePostcards, SamplePostcard } from "@/lib/samplePostcards";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 type ImageWithSize = {
@@ -125,6 +127,86 @@ export default function AddPostcardScreen() {
       console.error("Camera error:", err);
     }
   }, [startCrop]);
+
+  const processSample = useCallback(async (sample: SamplePostcard) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setProcessing("scanning");
+    setErrorMsg("");
+
+    try {
+      const [frontAsset, backAsset] = await Promise.all([
+        Asset.fromModule(sample.frontImage).downloadAsync(),
+        Asset.fromModule(sample.backImage).downloadAsync(),
+      ]);
+
+      const frontUri = frontAsset.localUri || frontAsset.uri;
+      const backUri = backAsset.localUri || backAsset.uri;
+
+      const [frontBase64, backBase64] = await Promise.all([
+        imageToBase64(frontUri),
+        imageToBase64(backUri),
+      ]);
+
+      setProcessing("extracting");
+
+      const response = await apiRequest("POST", "/api/process-postcard", {
+        frontImageBase64: frontBase64,
+        backImageBase64: backBase64,
+        targetLanguage,
+        excludeAddress,
+      });
+
+      setProcessing("translating");
+      const data = await response.json();
+
+      setProcessing("saving");
+
+      let audioPath: string | undefined;
+      let audioDurationMs: number | undefined;
+      const translatedText = data.translatedText || "";
+      if (translatedText.length > 0) {
+        try {
+          const ttsResponse = await apiRequest("POST", "/api/tts", { text: translatedText });
+          const ttsData = await ttsResponse.json();
+          audioPath = ttsData.audioUrl;
+          audioDurationMs = ttsData.durationMs;
+        } catch (e) {
+          console.log("TTS pre-generation skipped:", e);
+        }
+      }
+
+      const savedFront = await saveImagePermanently(frontUri);
+      const savedBack = await saveImagePermanently(backUri);
+
+      const postcard: Postcard = {
+        id: Crypto.randomUUID(),
+        frontImageUri: savedFront,
+        backImageUri: savedBack,
+        originalText: data.originalText || "",
+        translatedText,
+        detectedLanguage: data.detectedLanguage || "Unknown",
+        targetLanguage,
+        description: data.description || "",
+        words: data.words || [],
+        audioPath,
+        audioDurationMs,
+        createdAt: Date.now(),
+      };
+
+      await addPostcard(postcard);
+      setProcessing("done");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      setTimeout(() => {
+        if (router.canGoBack()) router.back(); else router.replace("/");
+      }, 800);
+    } catch (err: any) {
+      console.error("Sample processing error:", err);
+      setErrorMsg(err.message || "Failed to process sample postcard");
+      setProcessing("error");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  }, [targetLanguage, excludeAddress, addPostcard]);
 
   const processPostcard = useCallback(async () => {
     if (!backImage) {
@@ -400,6 +482,39 @@ export default function AddPostcardScreen() {
           <Text style={styles.langLabel}>Translating to: </Text>
           <Text style={styles.langValue}>{targetLanguage}</Text>
         </View>
+
+        <View style={styles.sampleDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or try a sample</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sampleRow}
+        >
+          {samplePostcards.map((sample) => (
+            <Pressable
+              key={sample.id}
+              onPress={() => processSample(sample)}
+              style={({ pressed }) => [
+                styles.sampleCard,
+                pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              ]}
+            >
+              <Image
+                source={sample.frontImage}
+                style={styles.sampleImage}
+                contentFit="cover"
+              />
+              <View style={styles.sampleInfo}>
+                <Text style={styles.sampleTitle} numberOfLines={1}>{sample.title}</Text>
+                <Text style={styles.sampleLang} numberOfLines={1}>{sample.language}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: bottomInset + 16 }]}>
@@ -591,6 +706,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     color: Colors.light.accent,
+  },
+  sampleDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 28,
+    marginBottom: 16,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.light.slate200,
+  },
+  dividerText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.textMuted,
+    letterSpacing: 0.3,
+  },
+  sampleRow: {
+    gap: 12,
+    paddingRight: 4,
+  },
+  sampleCard: {
+    width: 140,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: Colors.light.glassCard,
+    borderWidth: 1,
+    borderColor: Colors.light.glassBorderCard,
+  },
+  sampleImage: {
+    width: 140,
+    height: 100,
+  },
+  sampleInfo: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  sampleTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: Colors.light.text,
+    letterSpacing: -0.2,
+  },
+  sampleLang: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: Colors.light.textMuted,
+    marginTop: 2,
   },
   bottomBar: {
     position: "absolute",
