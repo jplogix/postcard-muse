@@ -112,7 +112,7 @@ function HandwrittenHint({ bottomInset }: { bottomInset: number }) {
             strokeDasharray="4,3"
           />
           <Path
-            d="M40 40 L46 46 L50 38"
+            d="M39 38 L46 44 L50 36"
             stroke={Colors.light.accent}
             strokeWidth={2.2}
             fill="none"
