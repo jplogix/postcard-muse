@@ -129,7 +129,7 @@ export async function saveSettings(settings: Partial<AppSettings>): Promise<void
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }));
 }
 
-const SAMPLES_SEEDED_KEY = "samples_seeded_v5";
+const SAMPLES_SEEDED_KEY = "samples_seeded_v6";
 
 async function resolveAssetUri(moduleAsset: any): Promise<string> {
   if (Platform.OS === "web") {
