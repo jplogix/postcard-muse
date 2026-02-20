@@ -58,7 +58,16 @@ export async function saveImagePermanently(uri: string): Promise<string> {
 export async function getPostcards(): Promise<Postcard[]> {
   const data = await AsyncStorage.getItem(POSTCARDS_KEY);
   if (!data) return [];
-  const postcards: Postcard[] = JSON.parse(data);
+  const raw: Postcard[] = JSON.parse(data);
+  const seen = new Set<string>();
+  const postcards = raw.filter((p) => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+  if (postcards.length < raw.length) {
+    await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(postcards));
+  }
   return postcards.sort((a, b) => b.createdAt - a.createdAt);
 }
 
