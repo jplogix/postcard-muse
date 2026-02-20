@@ -525,10 +525,13 @@ export default function DetailScreen() {
                 </Pressable>
               )}
               {!isPlaying && !hasPlayed ? (
-                <View style={styles.playHintContainer}>
-                  <Ionicons name="play-circle-outline" size={28} color={Colors.light.textMuted} />
-                  <Text style={styles.playHintText}>Press play to start</Text>
-                </View>
+                <Pressable onPress={playAudio} style={styles.playHintContainer}>
+                  <Feather name="arrow-up" size={16} color={Colors.light.accent} style={{ marginBottom: -2 }} />
+                  <View style={styles.playHintPill}>
+                    <Ionicons name="play" size={14} color={Colors.light.accent} />
+                    <Text style={styles.playHintText}>Tap play to hear the translation</Text>
+                  </View>
+                </Pressable>
               ) : (
                 <AnimatedText
                   words={postcard.words}
@@ -816,13 +819,24 @@ const styles = StyleSheet.create({
   playHintContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 20,
+    gap: 2,
+  },
+  playHintPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.light.accentDim,
+    borderWidth: 1,
+    borderColor: "rgba(79, 70, 229, 0.15)",
   },
   playHintText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    color: Colors.light.textMuted,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    color: Colors.light.accent,
     letterSpacing: 0.2,
   },
   originalSection: {
