@@ -132,7 +132,7 @@ const sampleHintStyles = StyleSheet.create({
     fontSize: 18,
     color: Colors.light.accent,
     transform: [{ rotate: "2deg" }],
-    marginBottom: 17,
+    marginBottom: 19,
   },
 });
 
