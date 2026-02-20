@@ -52,7 +52,11 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
 
   const updatePostcard = useCallback(async (id: string, updates: Partial<Postcard>) => {
     await updatePostcardData(id, updates);
-    setPostcards((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+    setPostcards((prev) => {
+      const exists = prev.some((p) => p.id === id);
+      if (!exists) return prev;
+      return prev.map((p) => (p.id === id ? { ...p, ...updates } : p));
+    });
   }, []);
 
   const removePostcard = useCallback(async (id: string) => {

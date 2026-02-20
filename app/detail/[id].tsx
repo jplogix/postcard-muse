@@ -25,6 +25,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
+import { updatePostcardData } from "@/lib/storage";
 import { getApiUrl } from "@/lib/query-client";
 import FlipCard, { CARD_WIDTH, CARD_HEIGHT } from "@/components/FlipCard";
 import AnimatedText from "@/components/AnimatedText";
@@ -242,8 +243,6 @@ export default function DetailScreen() {
     }
   }, [status.playing, status.currentTime, isPlaying, finishPlayback]);
 
-  const { updatePostcard } = usePostcards();
-
   const toggleMute = useCallback(() => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
@@ -325,17 +324,15 @@ export default function DetailScreen() {
         setAudioSource(fullAudioUrl);
       }
 
-      if (updatePostcard) {
-        updatePostcard(postcard.id, {
-          audioPath: data.audioUrl,
-          audioDurationMs: data.durationMs,
-        });
-      }
+      updatePostcardData(postcard.id, {
+        audioPath: data.audioUrl,
+        audioDurationMs: data.durationMs,
+      });
     } catch (err) {
       console.error("TTS error:", err);
       resetPlayback();
     }
-  }, [postcard, isPlaying, player, finishPlayback, resetPlayback, audioSource, baseUrl, updatePostcard, backgroundMusic, bgmPlayer]);
+  }, [postcard, isPlaying, player, finishPlayback, resetPlayback, audioSource, baseUrl, backgroundMusic, bgmPlayer]);
 
   const handleDelete = useCallback(async () => {
     if (!postcard) return;

@@ -78,7 +78,9 @@ export async function savePostcard(postcard: Postcard): Promise<void> {
 }
 
 export async function updatePostcardData(id: string, updates: Partial<Postcard>): Promise<void> {
-  const postcards = await getPostcards();
+  const data = await AsyncStorage.getItem(POSTCARDS_KEY);
+  if (!data) return;
+  const postcards: Postcard[] = JSON.parse(data);
   const idx = postcards.findIndex((p) => p.id === id);
   if (idx !== -1) {
     postcards[idx] = { ...postcards[idx], ...updates };
