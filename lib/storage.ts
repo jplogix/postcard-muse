@@ -44,6 +44,7 @@ function ensureImageDir() {
 
 export async function saveImagePermanently(uri: string): Promise<string> {
   if (Platform.OS === "web") return uri;
+  if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
   ensureImageDir();
   const id = Crypto.randomUUID();
   const ext = uri.includes(".png") ? "png" : "jpg";
@@ -75,14 +76,20 @@ export async function updatePostcardData(id: string, updates: Partial<Postcard>)
   }
 }
 
+function isLocalFileUri(uri: string): boolean {
+  return uri.startsWith("file://") || uri.startsWith("/");
+}
+
 export async function deletePostcard(id: string): Promise<void> {
   const postcards = await getPostcards();
   const card = postcards.find((p) => p.id === id);
   if (card && Platform.OS !== "web") {
     try {
-      const frontFile = new File(card.frontImageUri);
-      if (frontFile.exists) frontFile.delete();
-      if (card.backImageUri) {
+      if (isLocalFileUri(card.frontImageUri)) {
+        const frontFile = new File(card.frontImageUri);
+        if (frontFile.exists) frontFile.delete();
+      }
+      if (card.backImageUri && isLocalFileUri(card.backImageUri)) {
         const backFile = new File(card.backImageUri);
         if (backFile.exists) backFile.delete();
       }
@@ -176,7 +183,7 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
 }
 
 export async function imageToBase64(uri: string): Promise<string> {
-  if (Platform.OS === "web") {
+  if (Platform.OS === "web" || uri.startsWith("http://") || uri.startsWith("https://")) {
     const response = await fetch(uri);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
