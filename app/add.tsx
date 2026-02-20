@@ -120,7 +120,7 @@ const sampleHintStyles = StyleSheet.create({
   container: {
     position: "absolute",
     left: 12,
-    bottom: 6,
+    bottom: 54,
   },
   row: {
     flexDirection: "row",
