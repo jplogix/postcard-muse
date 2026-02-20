@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { File, Paths, Directory } from "expo-file-system";
 import * as Crypto from "expo-crypto";
 import { Platform } from "react-native";
+import { samplePostcards } from "./samplePostcards";
+import { getApiUrl } from "./query-client";
 
 export interface WordTiming {
   word: string;
@@ -106,6 +108,71 @@ export async function getSettings(): Promise<AppSettings> {
 export async function saveSettings(settings: Partial<AppSettings>): Promise<void> {
   const current = await getSettings();
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }));
+}
+
+const SAMPLES_SEEDED_KEY = "samples_seeded_v2";
+
+export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
+  const seeded = await AsyncStorage.getItem(SAMPLES_SEEDED_KEY);
+  if (seeded) return [];
+
+  let baseUrl: string;
+  try {
+    baseUrl = getApiUrl();
+  } catch {
+    return [];
+  }
+
+  const existing = await getPostcards();
+  const existingIds = new Set(existing.map((p) => p.id));
+
+  const newPostcards: Postcard[] = [];
+
+  for (const sample of samplePostcards) {
+    if (existingIds.has(sample.id)) continue;
+    if (!sample.originalText && !sample.translatedText) continue;
+
+    let frontUri: string;
+    let backUri: string;
+
+    if (sample.imageOnly) {
+      frontUri = new URL(`/static/${sample.frontImage}`, baseUrl).href;
+      backUri = new URL(`/static/${sample.backImage}`, baseUrl).href;
+    } else {
+      continue;
+    }
+
+    let audioPath: string | undefined;
+    if (sample.audioFile) {
+      audioPath = `/static/${sample.audioFile}`;
+    }
+
+    const postcard: Postcard = {
+      id: sample.id,
+      frontImageUri: frontUri,
+      backImageUri: backUri,
+      originalText: sample.originalText || "",
+      translatedText: sample.translatedText || "",
+      detectedLanguage: sample.detectedLanguage || "Unknown",
+      targetLanguage: "English",
+      description: sample.description || "",
+      words: sample.words || [],
+      audioPath,
+      audioDurationMs: sample.durationMs,
+      wordTimings: sample.wordTimings,
+      createdAt: Date.now() - newPostcards.length * 1000,
+    };
+
+    newPostcards.push(postcard);
+  }
+
+  if (newPostcards.length > 0) {
+    const all = [...newPostcards, ...existing];
+    await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(all));
+  }
+
+  await AsyncStorage.setItem(SAMPLES_SEEDED_KEY, "true");
+  return newPostcards;
 }
 
 export async function imageToBase64(uri: string): Promise<string> {

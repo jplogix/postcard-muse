@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from "react";
-import { Postcard, getPostcards, savePostcard, deletePostcard, updatePostcardData, getSettings, saveSettings } from "./storage";
+import { Postcard, getPostcards, savePostcard, deletePostcard, updatePostcardData, getSettings, saveSettings, seedSamplesIfNeeded } from "./storage";
 
 interface PostcardContextValue {
   postcards: Postcard[];
@@ -28,6 +28,7 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
+      await seedSamplesIfNeeded();
       const [cards, settings] = await Promise.all([getPostcards(), getSettings()]);
       setPostcards(cards);
       setTargetLang(settings.targetLanguage);
