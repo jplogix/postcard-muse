@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -28,6 +29,8 @@ import { getApiUrl } from "@/lib/query-client";
 import FlipCard, { CARD_WIDTH, CARD_HEIGHT } from "@/components/FlipCard";
 import AnimatedText from "@/components/AnimatedText";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
+import ScanningAnimation from "@/components/ScanningAnimation";
+import LoadingJokes from "@/components/LoadingJokes";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -39,10 +42,32 @@ export default function DetailScreen() {
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
   const postcard = postcards.find((p) => p.id === id);
+  const isSample = id?.startsWith("sample-") ?? false;
+  const [showScanAnim, setShowScanAnim] = useState(false);
+  const [scanPhase, setScanPhase] = useState<"scanning" | "extracting" | "translating" | "done">("scanning");
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    if (!isSample || !id) return;
+    const key = `sample_scanned_${id}`;
+    AsyncStorage.getItem(key).then((val) => {
+      if (!val) {
+        setShowScanAnim(true);
+        setScanPhase("scanning");
+        AsyncStorage.setItem(key, "1");
+        setTimeout(() => setScanPhase("extracting"), 1200);
+        setTimeout(() => setScanPhase("translating"), 2200);
+        setTimeout(() => {
+          setScanPhase("done");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setTimeout(() => setShowScanAnim(false), 600);
+        }, 3200);
+      }
+    });
+  }, [isSample, id]);
   const syncFrameRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   const seekingRef = useRef(false);
 
@@ -330,6 +355,34 @@ export default function DetailScreen() {
     day: "numeric",
   });
 
+  const scanStatusText = scanPhase === "scanning"
+    ? "Scanning postcard..."
+    : scanPhase === "extracting"
+    ? "Extracting handwritten text..."
+    : scanPhase === "translating"
+    ? "Translating message..."
+    : "Complete!";
+
+  if (showScanAnim) {
+    const scanImage = postcard.backImageUri || postcard.frontImageUri;
+    return (
+      <View style={[styles.container, { paddingTop: topInset }]}>
+        <MeshGradientBackground />
+        <View style={styles.scanOverlay}>
+          <ScanningAnimation imageUri={scanImage} statusText={scanStatusText} />
+          <LoadingJokes isVisible={scanPhase !== "done"} />
+          {scanPhase === "done" && (
+            <View style={styles.scanDoneContainer}>
+              <View style={styles.scanCheckCircle}>
+                <Ionicons name="checkmark" size={28} color="#FFFFFF" />
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: topInset }]}>
       <MeshGradientBackground />
@@ -515,6 +568,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.background,
+  },
+  scanOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scanDoneContainer: {
+    alignItems: "center",
+    marginTop: 20,
+  },
+  scanCheckCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.light.accent,
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     flexDirection: "row",
