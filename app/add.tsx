@@ -149,6 +149,7 @@ export default function AddPostcardScreen() {
   const [cropPending, setCropPending] = useState<CropPending | null>(null);
   const [showSamples, setShowSamples] = useState(false);
   const [selectedSample, setSelectedSample] = useState<SamplePostcard | null>(null);
+  const [activeSampleId, setActiveSampleId] = useState<string | null>(null);
   const [loadingSample, setLoadingSample] = useState(false);
 
   const startCrop = useCallback((asset: ImagePicker.ImagePickerAsset, side: "front" | "back") => {
@@ -171,6 +172,7 @@ export default function AddPostcardScreen() {
       setBackImage(img);
     }
     setSelectedSample(null);
+    setActiveSampleId(null);
     setCropPending(null);
   }, [cropPending]);
 
@@ -214,7 +216,12 @@ export default function AddPostcardScreen() {
 
   const loadSample = useCallback(async (sample: SamplePostcard) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedSample(sample);
+    setActiveSampleId(sample.id);
+    if (sample.imageOnly) {
+      setSelectedSample(null);
+    } else {
+      setSelectedSample(sample);
+    }
     setShowSamples(false);
     setLoadingSample(true);
 
@@ -230,6 +237,7 @@ export default function AddPostcardScreen() {
     } catch (err) {
       console.error("Failed to load sample images:", err);
       setSelectedSample(null);
+      setActiveSampleId(null);
     } finally {
       setLoadingSample(false);
     }
@@ -433,7 +441,7 @@ export default function AddPostcardScreen() {
         <View style={[styles.imagePickerBox, { aspectRatio: clampedRatio }]}>
           <Image source={{ uri: image.uri }} style={styles.previewImage} contentFit="cover" />
           <Pressable
-            onPress={() => { setImage(null); setSelectedSample(null); }}
+            onPress={() => { setImage(null); setSelectedSample(null); setActiveSampleId(null); }}
             style={styles.removeBtn}
             hitSlop={8}
           >
@@ -570,7 +578,7 @@ export default function AddPostcardScreen() {
                 onPress={() => loadSample(sample)}
                 style={({ pressed }) => [
                   styles.sampleCard,
-                  selectedSample?.id === sample.id && styles.sampleCardSelected,
+                  activeSampleId === sample.id && styles.sampleCardSelected,
                   pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
                 ]}
               >
@@ -588,7 +596,7 @@ export default function AddPostcardScreen() {
           </ScrollView>
         )}
         <View style={styles.bottomBtnRow}>
-          {!frontImage && !backImage && !showSamples && !selectedSample && (
+          {!frontImage && !backImage && !showSamples && !selectedSample && !activeSampleId && (
             <SampleHint />
           )}
           <Pressable
