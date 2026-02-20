@@ -127,7 +127,7 @@ export async function saveSettings(settings: Partial<AppSettings>): Promise<void
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }));
 }
 
-const SAMPLES_SEEDED_KEY = "samples_seeded_v4";
+const SAMPLES_SEEDED_KEY = "samples_seeded_v5";
 
 async function resolveAssetUri(moduleAsset: any): Promise<string> {
   if (Platform.OS === "web") {
@@ -144,7 +144,9 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
   if (seeded) return [];
 
   const existing = await getPostcards();
-  const existingIds = new Set(existing.map((p) => p.id));
+  const sampleIds = new Set(samplePostcards.map((s) => s.id));
+  const nonSamples = existing.filter((p) => !sampleIds.has(p.id));
+  const existingIds = new Set<string>();
 
   const newPostcards: Postcard[] = [];
 
@@ -187,7 +189,7 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
   }
 
   if (newPostcards.length > 0) {
-    const all = [...newPostcards, ...existing];
+    const all = [...newPostcards, ...nonSamples];
     await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(all));
   }
 
