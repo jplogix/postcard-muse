@@ -217,31 +217,19 @@ export default function AddPostcardScreen() {
   const loadSample = useCallback(async (sample: SamplePostcard) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setActiveSampleId(sample.id);
-    if (sample.imageOnly) {
-      setSelectedSample(null);
-    } else {
-      setSelectedSample(sample);
-    }
+    setSelectedSample(sample);
     setShowSamples(false);
     setLoadingSample(true);
 
     try {
-      if (sample.imageOnly) {
-        const baseUrl = getApiUrl();
-        const frontUrl = new URL(`/static/samples/${sample.frontImage}`, baseUrl).href;
-        const backUrl = new URL(`/static/samples/${sample.backImage}`, baseUrl).href;
-        setFrontImage({ uri: frontUrl, width: 800, height: 600 });
-        setBackImage({ uri: backUrl, width: 800, height: 600 });
-      } else {
-        const [frontAsset, backAsset] = await Promise.all([
-          Asset.fromModule(sample.frontImage).downloadAsync(),
-          Asset.fromModule(sample.backImage).downloadAsync(),
-        ]);
-        const frontUri = frontAsset.localUri || frontAsset.uri;
-        const backUri = backAsset.localUri || backAsset.uri;
-        setFrontImage({ uri: frontUri, width: 1600, height: 1000 });
-        setBackImage({ uri: backUri, width: 1600, height: 1000 });
-      }
+      const [frontAsset, backAsset] = await Promise.all([
+        Asset.fromModule(sample.frontImage).downloadAsync(),
+        Asset.fromModule(sample.backImage).downloadAsync(),
+      ]);
+      const frontUri = frontAsset.localUri || frontAsset.uri;
+      const backUri = backAsset.localUri || backAsset.uri;
+      setFrontImage({ uri: frontUri, width: 1600, height: 1000 });
+      setBackImage({ uri: backUri, width: 1600, height: 1000 });
     } catch (err) {
       console.error("Failed to load sample images:", err);
       setSelectedSample(null);
@@ -257,17 +245,23 @@ export default function AddPostcardScreen() {
     setErrorMsg("");
 
     try {
-      const [frontAsset, backAsset, audioAsset] = await Promise.all([
+      const assetPromises: Promise<Asset>[] = [
         Asset.fromModule(sample.frontImage).downloadAsync(),
         Asset.fromModule(sample.backImage).downloadAsync(),
-        Asset.fromModule(sample.audioAsset).downloadAsync(),
-      ]);
+      ];
+      if (sample.audioAsset) {
+        assetPromises.push(Asset.fromModule(sample.audioAsset).downloadAsync());
+      }
+      const assets = await Promise.all(assetPromises);
+      const frontAsset = assets[0];
+      const backAsset = assets[1];
+      const audioAssetResult = assets[2];
 
       setProcessing("extracting");
 
       const frontUri = frontAsset.localUri || frontAsset.uri;
       const backUri = backAsset.localUri || backAsset.uri;
-      const audioUri = audioAsset.localUri || audioAsset.uri;
+      const audioUri = audioAssetResult ? (audioAssetResult.localUri || audioAssetResult.uri) : undefined;
 
       await new Promise((r) => setTimeout(r, 800));
       setProcessing("translating");
@@ -591,7 +585,7 @@ export default function AddPostcardScreen() {
                 ]}
               >
                 <Image
-                  source={sample.imageOnly ? { uri: new URL(`/static/${sample.frontImage}`, getApiUrl()).href } : sample.frontImage}
+                  source={sample.frontImage}
                   style={styles.sampleImage}
                   contentFit="cover"
                 />
