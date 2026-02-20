@@ -508,20 +508,15 @@ export default function DetailScreen() {
           <View style={styles.translatedSection}>
             <View style={styles.translatedHeader}>
               <Text style={styles.translatedLabel}>TRANSLATED MESSAGE</Text>
-              {!hasPlayed || isPlaying ? (
+              {isPlaying ? (
                 <Pressable
                   onPress={playAudio}
                   style={({ pressed }) => [
-                    styles.playBtn,
-                    isPlaying && styles.playBtnActive,
+                    styles.stopBtn,
                     pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
                   ]}
                 >
-                  <Ionicons
-                    name={isPlaying ? "stop" : "play"}
-                    size={16}
-                    color={isPlaying ? "#FFFFFF" : Colors.light.accent}
-                  />
+                  <Ionicons name="stop" size={14} color="#FFFFFF" />
                 </Pressable>
               ) : null}
             </View>
@@ -543,13 +538,18 @@ export default function DetailScreen() {
                 </Pressable>
               )}
               {!isPlaying && !hasPlayed ? (
-                <Pressable onPress={playAudio} style={styles.playHintContainer}>
-                  <Feather name="arrow-up" size={16} color={Colors.light.accent} style={{ marginBottom: -2 }} />
-                  <View style={styles.playHintPill}>
-                    <Ionicons name="play" size={14} color={Colors.light.accent} />
-                    <Text style={styles.playHintText}>Tap play to hear the translation</Text>
-                  </View>
-                </Pressable>
+                <View style={styles.playHintContainer}>
+                  <Pressable
+                    onPress={playAudio}
+                    style={({ pressed }) => [
+                      styles.playGlassBtn,
+                      pressed && { opacity: 0.85, transform: [{ scale: 0.93 }] },
+                    ]}
+                  >
+                    <Ionicons name="play" size={28} color={Colors.light.accent} style={{ marginLeft: 3 }} />
+                  </Pressable>
+                  <Text style={styles.playHintText}>Press play to start</Text>
+                </View>
               ) : (
                 <AnimatedText
                   words={postcard.words}
@@ -797,19 +797,28 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     letterSpacing: 0.3,
   },
-  playBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.light.accentDim,
+  stopBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.light.accent,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(79, 70, 229, 0.2)",
   },
-  playBtnActive: {
-    backgroundColor: Colors.light.accent,
-    borderColor: Colors.light.accent,
+  playGlassBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(79, 70, 229, 0.25)",
+    shadowColor: Colors.light.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   muteBtn: {
     position: "absolute",
@@ -837,25 +846,13 @@ const styles = StyleSheet.create({
   playHintContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 20,
-    gap: 2,
-  },
-  playHintPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: Colors.light.accentDim,
-    borderWidth: 1,
-    borderColor: "rgba(79, 70, 229, 0.15)",
+    paddingVertical: 24,
+    gap: 12,
   },
   playHintText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    color: Colors.light.accent,
-    letterSpacing: 0.2,
+    fontSize: 18,
+    fontFamily: "Caveat_500Medium",
+    color: Colors.light.textMuted,
   },
   originalSection: {
     marginHorizontal: 24,
