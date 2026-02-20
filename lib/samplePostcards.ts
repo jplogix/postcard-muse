@@ -11,14 +11,15 @@ export interface SamplePostcard {
   language: string;
   frontImage: any;
   backImage: any;
-  originalText: string;
-  translatedText: string;
-  detectedLanguage: string;
-  description: string;
-  words: string[];
-  audioAsset: any;
-  durationMs: number;
-  wordTimings: SampleWordTiming[];
+  imageOnly?: boolean;
+  originalText?: string;
+  translatedText?: string;
+  detectedLanguage?: string;
+  description?: string;
+  words?: string[];
+  audioAsset?: any;
+  durationMs?: number;
+  wordTimings?: SampleWordTiming[];
 }
 
 const parisTimings: SampleWordTiming[] = [
@@ -151,5 +152,77 @@ export const samplePostcards: SamplePostcard[] = [
     audioAsset: require("@/assets/samples/santorini_audio.mp3"),
     durationMs: 12228,
     wordTimings: santoriniTimings,
+  },
+  {
+    id: "sample-christmas",
+    title: "Christmas Card",
+    location: "Dresden",
+    language: "German",
+    frontImage: require("@/assets/samples/christmas_front.jpg"),
+    backImage: require("@/assets/samples/christmas_back.jpg"),
+    imageOnly: true,
+  },
+  {
+    id: "sample-dresden-bw",
+    title: "Dresden Views",
+    location: "Dresden",
+    language: "German",
+    frontImage: require("@/assets/samples/dresden_bw_front.jpg"),
+    backImage: require("@/assets/samples/dresden_bw_back.jpg"),
+    imageOnly: true,
+  },
+  {
+    id: "sample-dresden-color",
+    title: "Dresden to Caribbean",
+    location: "Dresden",
+    language: "German",
+    frontImage: require("@/assets/samples/dresden_color_front.jpg"),
+    backImage: require("@/assets/samples/dresden_color_back.jpg"),
+    imageOnly: true,
+  },
+  {
+    id: "sample-standseilbahn",
+    title: "Dresden Railway",
+    location: "Dresden",
+    language: "German",
+    frontImage: require("@/assets/samples/standseilbahn_front.jpg"),
+    backImage: require("@/assets/samples/standseilbahn_back.jpg"),
+    imageOnly: true,
+  },
+  {
+    id: "sample-neujahr",
+    title: "New Year's Card",
+    location: "Dresden",
+    language: "German",
+    frontImage: require("@/assets/samples/neujahr_front.jpg"),
+    backImage: require("@/assets/samples/neujahr_back.jpg"),
+    imageOnly: true,
+  },
+  {
+    id: "sample-scouts",
+    title: "Scout Camp 1934",
+    location: "Germany",
+    language: "German",
+    frontImage: require("@/assets/samples/scouts_front.jpg"),
+    backImage: require("@/assets/samples/scouts_back.jpg"),
+    imageOnly: true,
+  },
+  {
+    id: "sample-deer",
+    title: "Deer Park",
+    location: "Germany",
+    language: "German",
+    frontImage: require("@/assets/samples/deer_front.jpg"),
+    backImage: require("@/assets/samples/deer_back.jpg"),
+    imageOnly: true,
+  },
+  {
+    id: "sample-dresden-letter",
+    title: "Dresden Letter 1980",
+    location: "Dresden",
+    language: "German",
+    frontImage: require("@/assets/samples/christmas_front.jpg"),
+    backImage: require("@/assets/samples/dresden_letter_back.jpg"),
+    imageOnly: true,
   },
 ];
