@@ -26,6 +26,7 @@ import Animated, {
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import { updatePostcardData } from "@/lib/storage";
+import { samplePostcards } from "@/lib/samplePostcards";
 import { getApiUrl } from "@/lib/query-client";
 import FlipCard, { CARD_WIDTH, CARD_HEIGHT } from "@/components/FlipCard";
 import AnimatedText from "@/components/AnimatedText";
@@ -70,13 +71,13 @@ export default function DetailScreen() {
         setShowScanAnim(true);
         setScanPhase("scanning");
         AsyncStorage.setItem(key, "1");
-        setTimeout(() => setScanPhase("extracting"), 2500);
-        setTimeout(() => setScanPhase("translating"), 4500);
+        setTimeout(() => setScanPhase("extracting"), 3500);
+        setTimeout(() => setScanPhase("translating"), 6500);
         setTimeout(() => {
           setScanPhase("done");
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          setTimeout(() => setShowScanAnim(false), 1000);
-        }, 6500);
+          setTimeout(() => setShowScanAnim(false), 1500);
+        }, 9500);
       }
     });
   }, [isSample, id]);
@@ -84,14 +85,22 @@ export default function DetailScreen() {
   const seekingRef = useRef(false);
 
   const baseUrl = getApiUrl();
-  const initialAudioUrl = postcard?.audioPath
-    ? (postcard.audioPath.startsWith("file://") || postcard.audioPath.startsWith("http"))
-      ? postcard.audioPath
-      : new URL(postcard.audioPath, baseUrl).toString()
-    : null;
-  const [audioSource, setAudioSource] = useState<string | null>(initialAudioUrl);
-  const [audioDurationMs, setAudioDurationMs] = useState(postcard?.audioDurationMs || 0);
-  const wordTimingsRef = useRef<{ word: string; startMs: number; endMs: number }[] | null>(postcard?.wordTimings || null);
+  const sampleData = isSample ? samplePostcards.find((s) => s.id === id) : null;
+  const initialAudioSource: string | number | null = (() => {
+    if (sampleData?.audioAsset) return sampleData.audioAsset;
+    if (postcard?.audioPath) {
+      if (postcard.audioPath.startsWith("file://") || postcard.audioPath.startsWith("http")) return postcard.audioPath;
+      return new URL(postcard.audioPath, baseUrl).toString();
+    }
+    return null;
+  })();
+  const [audioSource, setAudioSource] = useState<string | number | null>(initialAudioSource);
+  const [audioDurationMs, setAudioDurationMs] = useState(
+    sampleData?.durationMs || postcard?.audioDurationMs || 0
+  );
+  const wordTimingsRef = useRef<{ word: string; startMs: number; endMs: number }[] | null>(
+    sampleData?.wordTimings || postcard?.wordTimings || null
+  );
   const replayOverlayOpacity = useSharedValue(0);
   const replayOverlayStyle = useAnimatedStyle(() => ({
     opacity: replayOverlayOpacity.value,

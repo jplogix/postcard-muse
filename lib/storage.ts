@@ -129,7 +129,7 @@ export async function saveSettings(settings: Partial<AppSettings>): Promise<void
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }));
 }
 
-const SAMPLES_SEEDED_KEY = "samples_seeded_v7";
+const SAMPLES_SEEDED_KEY = "samples_seeded_v8";
 
 async function resolveAssetUri(moduleAsset: any): Promise<string> {
   if (Platform.OS === "web") {
@@ -193,6 +193,10 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
   if (newPostcards.length > 0) {
     const all = [...newPostcards, ...nonSamples];
     await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(all));
+  }
+
+  for (const sample of samplePostcards) {
+    await AsyncStorage.removeItem(`sample_scanned_${sample.id}`);
   }
 
   await AsyncStorage.setItem(SAMPLES_SEEDED_KEY, "true");
