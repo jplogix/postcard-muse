@@ -3,8 +3,7 @@ name: Deploy Privacy Policy to GitHub Pages
 on:
   push:
     branches: [main]
-    paths:
-      - 'privacy.html'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,6 +26,9 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      - name: Copy privacy.html to index.html
+        run: cp privacy.html index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
