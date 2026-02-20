@@ -225,4 +225,13 @@ export const samplePostcards: SamplePostcard[] = [
     backImage: require("@/assets/samples/dresden_letter_back.jpg"),
     imageOnly: true,
   },
+  {
+    id: "sample-dresden-panorama",
+    title: "Dresden Panorama",
+    location: "Dresden",
+    language: "German",
+    frontImage: require("@/assets/samples/dresden_panorama_front.jpg"),
+    backImage: require("@/assets/samples/dresden_panorama_back.jpg"),
+    imageOnly: true,
+  },
 ];
