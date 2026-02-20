@@ -119,7 +119,7 @@ function SampleHint() {
 const sampleHintStyles = StyleSheet.create({
   container: {
     position: "absolute",
-    left: 12,
+    left: 14,
     bottom: 54,
   },
   row: {
@@ -132,7 +132,7 @@ const sampleHintStyles = StyleSheet.create({
     fontSize: 18,
     color: Colors.light.accent,
     transform: [{ rotate: "2deg" }],
-    marginBottom: 12,
+    marginBottom: 17,
   },
 });
 
