@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -20,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
+import { clearAllPostcards } from "@/lib/storage";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const TRACK_W = 50;
@@ -90,13 +92,54 @@ export default function SettingsScreen() {
     backgroundMusic,
     setBackgroundMusic,
     postcards,
+    refresh,
+    setPostcards,
   } = usePostcards();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
+  const [isClearing, setIsClearing] = useState(false);
 
   const handleSelectLanguage = async (lang: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await setTargetLanguage(lang);
+  };
+
+  const handleClearAll = () => {
+    const userPostcards = postcards.filter((p) => !p.id.startsWith("sample-"));
+    if (userPostcards.length === 0) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      "Clear Postcards",
+      `Are you sure you want to delete ${userPostcards.length} postcard${userPostcards.length > 1 ? 's' : ''}? Sample postcards will remain.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          },
+        },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            setIsClearing(true);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            try {
+              const samplesOnly = await clearAllPostcards();
+              // Immediately update the context state
+              setPostcards(samplesOnly);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (err) {
+              console.error("Failed to clear postcards:", err);
+            } finally {
+              setIsClearing(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -207,6 +250,33 @@ export default function SettingsScreen() {
             }}
           />
         </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>
+          DATA MANAGEMENT
+        </Text>
+        <Pressable
+          onPress={handleClearAll}
+          disabled={isClearing}
+          style={({ pressed }) => [
+            styles.clearButton,
+            pressed && !isClearing && styles.clearButtonPressed,
+            isClearing && styles.clearButtonDisabled,
+          ]}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={20}
+            color={isClearing ? Colors.light.textMuted : "#EF4444"}
+          />
+          <Text
+            style={[
+              styles.clearButtonText,
+              isClearing && styles.clearButtonTextDisabled,
+            ]}
+          >
+            {isClearing ? "Clearing..." : "Clear My Postcards"}
+          </Text>
+        </Pressable>
 
         <View style={styles.aboutSection}>
           <Text style={styles.aboutTitle}>About Postcard Muse</Text>
@@ -383,5 +453,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 3,
+  },
+  clearButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "rgba(239, 68, 68, 0.08)",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.2)",
+    marginTop: 12,
+    marginBottom: 28,
+  },
+  clearButtonPressed: {
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+  },
+  clearButtonDisabled: {
+    backgroundColor: Colors.light.slate100,
+    borderColor: Colors.light.slate200,
+  },
+  clearButtonText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: "#EF4444",
+  },
+  clearButtonTextDisabled: {
+    color: Colors.light.textMuted,
   },
 });

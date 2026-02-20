@@ -263,9 +263,10 @@ export default function AddPostcardScreen() {
       const backUri = backAsset.localUri || backAsset.uri;
       const audioUri = audioAssetResult ? (audioAssetResult.localUri || audioAssetResult.uri) : undefined;
 
-      await new Promise((r) => setTimeout(r, 800));
+      // Longer scanning duration for samples (increased from 800ms to 2000ms)
+      await new Promise((r) => setTimeout(r, 2000));
       setProcessing("translating");
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 1500));
       setProcessing("saving");
 
       const savedFront = await saveImagePermanently(frontUri);

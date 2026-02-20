@@ -33,6 +33,7 @@ import AnimatedText from "@/components/AnimatedText";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 import ScanningAnimation from "@/components/ScanningAnimation";
 import LoadingJokes from "@/components/LoadingJokes";
+import LoadingDots from "@/components/LoadingDots";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -62,6 +63,7 @@ export default function DetailScreen() {
   const [hasPlayed, setHasPlayed] = useState(false);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [isMuted, setIsMuted] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
   useEffect(() => {
     if (!isSample || !id) return;
@@ -71,13 +73,14 @@ export default function DetailScreen() {
         setShowScanAnim(true);
         setScanPhase("scanning");
         AsyncStorage.setItem(key, "1");
-        setTimeout(() => setScanPhase("extracting"), 3500);
-        setTimeout(() => setScanPhase("translating"), 6500);
+        // Longer scanning duration for samples (increased from 3.5s to 6s)
+        setTimeout(() => setScanPhase("extracting"), 6000);
+        setTimeout(() => setScanPhase("translating"), 10000);
         setTimeout(() => {
           setScanPhase("done");
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setTimeout(() => setShowScanAnim(false), 1500);
-        }, 9500);
+        }, 14000);
       }
     });
   }, [isSample, id]);
@@ -302,6 +305,9 @@ export default function DetailScreen() {
       return;
     }
 
+    // Show loading state for TTS generation
+    setIsGeneratingAudio(true);
+
     try {
       const url = new URL("/api/tts", baseUrl);
       const response = await globalThis.fetch(url.toString(), {
@@ -322,6 +328,7 @@ export default function DetailScreen() {
       if (audioSource) {
         player.seekTo(0);
         setTimeout(() => {
+          setIsGeneratingAudio(false);
           player.play();
           if (backgroundMusic && bgmPlayer) {
             bgmPlayer.seekTo(0);
@@ -331,6 +338,7 @@ export default function DetailScreen() {
       } else {
         pendingPlayRef.current = true;
         setAudioSource(fullAudioUrl);
+        setIsGeneratingAudio(false);
       }
 
       updatePostcardData(postcard.id, {
@@ -339,6 +347,7 @@ export default function DetailScreen() {
       });
     } catch (err) {
       console.error("TTS error:", err);
+      setIsGeneratingAudio(false);
       resetPlayback();
     }
   }, [postcard, isPlaying, player, finishPlayback, resetPlayback, audioSource, baseUrl, backgroundMusic, bgmPlayer]);
@@ -545,16 +554,25 @@ export default function DetailScreen() {
               )}
               {!isPlaying && !hasPlayed ? (
                 <View style={styles.playHintContainer}>
-                  <Pressable
-                    onPress={playAudio}
-                    style={({ pressed }) => [
-                      styles.playGlassBtn,
-                      pressed && { opacity: 0.85, transform: [{ scale: 0.93 }] },
-                    ]}
-                  >
-                    <Ionicons name="play" size={28} color={Colors.light.accent} style={{ marginLeft: 3 }} />
-                  </Pressable>
-                  <Text style={styles.playHintText}>Press play to start</Text>
+                  {isGeneratingAudio ? (
+                    <View style={styles.loadingContainer}>
+                      <LoadingDots color={Colors.light.accent} size="medium" />
+                      <Text style={styles.playHintText}>Generating audio...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Pressable
+                        onPress={playAudio}
+                        style={({ pressed }) => [
+                          styles.playGlassBtn,
+                          pressed && { opacity: 0.85, transform: [{ scale: 0.93 }] },
+                        ]}
+                      >
+                        <Ionicons name="play" size={28} color={Colors.light.accent} style={{ marginLeft: 3 }} />
+                      </Pressable>
+                      <Text style={styles.playHintText}>Press play to start</Text>
+                    </>
+                  )}
                 </View>
               ) : (
                 <AnimatedText
@@ -574,16 +592,23 @@ export default function DetailScreen() {
                   locations={[0, 0.4, 1]}
                   style={StyleSheet.absoluteFill}
                 />
-                <Pressable
-                  onPress={playAudio}
-                  style={({ pressed }) => [
-                    styles.replayOverlayBtn,
-                    pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
-                  ]}
-                >
-                  <Ionicons name="refresh" size={20} color="#FFFFFF" />
-                  <Text style={styles.replayOverlayText}>Replay</Text>
-                </Pressable>
+                {isGeneratingAudio ? (
+                  <View style={styles.replayOverlayBtn}>
+                    <LoadingDots color="#FFFFFF" size="small" />
+                    <Text style={styles.replayOverlayText}>Loading...</Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={playAudio}
+                    style={({ pressed }) => [
+                      styles.replayOverlayBtn,
+                      pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
+                    ]}
+                  >
+                    <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                    <Text style={styles.replayOverlayText}>Replay</Text>
+                  </Pressable>
+                )}
               </Animated.View>
             </View>
           </View>
@@ -859,6 +884,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Caveat_500Medium",
     color: Colors.light.textMuted,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 24,
+    gap: 12,
   },
   originalSection: {
     marginHorizontal: 24,

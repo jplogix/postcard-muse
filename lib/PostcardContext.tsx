@@ -13,6 +13,7 @@ interface PostcardContextValue {
   addPostcard: (postcard: Postcard) => Promise<void>;
   updatePostcard: (id: string, updates: Partial<Postcard>) => Promise<void>;
   removePostcard: (id: string) => Promise<void>;
+  setPostcards: (cards: Postcard[]) => void;
   refresh: () => Promise<void>;
 }
 
@@ -92,6 +93,7 @@ export function PostcardProvider({ children }: { children: ReactNode }) {
       addPostcard,
       updatePostcard,
       removePostcard,
+      setPostcards,
       refresh: loadData,
     }),
     [postcards, isLoading, targetLanguage, excludeAddress, backgroundMusic, setTargetLanguage, setExcludeAddress, setBackgroundMusic, addPostcard, updatePostcard, removePostcard, loadData]

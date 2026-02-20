@@ -147,7 +147,7 @@ export async function saveSettings(settings: Partial<AppSettings>): Promise<void
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }));
 }
 
-const SAMPLES_SEEDED_KEY = "samples_seeded_v8";
+const SAMPLES_SEEDED_KEY = "samples_seeded_v9";
 
 async function resolveAssetUri(moduleAsset: any): Promise<string> {
   if (Platform.OS === "web") {
@@ -182,8 +182,13 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
 
       let audioUri: string | undefined;
       if (sample.audioAsset) {
-        const audioAsset = await Asset.fromModule(sample.audioAsset).downloadAsync();
-        audioUri = audioAsset.localUri || audioAsset.uri;
+        try {
+          const audioAsset = await Asset.fromModule(sample.audioAsset).downloadAsync();
+          audioUri = audioAsset.localUri || audioAsset.uri;
+        } catch (audioErr) {
+          console.warn(`Failed to download audio for ${sample.id}:`, audioErr);
+          // Continue without audio - sample will still work but needs TTS generation
+        }
       }
 
       const postcard: Postcard = {
@@ -201,6 +206,8 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
         wordTimings: sample.wordTimings,
         createdAt: Date.now() - newPostcards.length * 1000,
       };
+
+      console.log(`Seeding sample ${sample.id} with ${sample.words?.length || 0} words, audio: ${!!audioUri}`);
 
       newPostcards.push(postcard);
     } catch (err) {
@@ -235,4 +242,18 @@ export async function imageToBase64(uri: string): Promise<string> {
   const file = new File(uri);
   const base64 = await file.base64();
   return `data:image/jpeg;base64,${base64}`;
+}
+
+export async function clearAllPostcards(): Promise<Postcard[]> {
+  const data = await AsyncStorage.getItem(POSTCARDS_KEY);
+  if (!data) return [];
+
+  const postcards: Postcard[] = JSON.parse(data);
+
+  // Keep only sample postcards (ids starting with "sample-")
+  const samplesOnly = postcards.filter((p) => p.id.startsWith("sample-"));
+
+  await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(samplesOnly));
+
+  return samplesOnly;
 }
