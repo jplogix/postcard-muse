@@ -21,11 +21,19 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
+import Svg, {
+  Path,
+  Defs,
+  LinearGradient as SvgGradient,
+  Stop,
+} from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
-import PostcardThumbnail, { CARD_SIZE, GAP } from "@/components/PostcardThumbnail";
+import PostcardThumbnail, {
+  CARD_SIZE,
+  GAP,
+} from "@/components/PostcardThumbnail";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
 
 const AnimatedSvg = Animated.createAnimatedComponent(Svg);
@@ -40,32 +48,56 @@ function HandwrittenHint({ bottomInset }: { bottomInset: number }) {
   const bobY = useSharedValue(0);
 
   useEffect(() => {
-    textOpacity.value = withDelay(400, withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }));
-    textTranslateY.value = withDelay(400, withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) }));
-    arrowOpacity.value = withDelay(700, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
-    arrowTranslateY.value = withDelay(700, withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }));
-    bobY.value = withDelay(1200, withRepeat(
-      withSequence(
-        withTiming(-4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
-        withTiming(4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+    textOpacity.value = withDelay(
+      400,
+      withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }),
+    );
+    textTranslateY.value = withDelay(
+      400,
+      withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) }),
+    );
+    arrowOpacity.value = withDelay(
+      700,
+      withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }),
+    );
+    arrowTranslateY.value = withDelay(
+      700,
+      withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }),
+    );
+    bobY.value = withDelay(
+      1200,
+      withRepeat(
+        withSequence(
+          withTiming(-4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+          withTiming(4, { duration: 1200, easing: Easing.inOut(Easing.quad) }),
+        ),
+        -1,
+        true,
       ),
-      -1,
-      true
-    ));
+    );
   }, []);
 
   const textStyle = useAnimatedStyle(() => ({
     opacity: textOpacity.value,
-    transform: [{ translateY: textTranslateY.value }, { translateY: bobY.value }],
+    transform: [
+      { translateY: textTranslateY.value },
+      { translateY: bobY.value },
+    ],
   }));
 
   const arrowStyle = useAnimatedStyle(() => ({
     opacity: arrowOpacity.value,
-    transform: [{ translateY: arrowTranslateY.value }, { translateY: bobY.value }],
+    transform: [
+      { translateY: arrowTranslateY.value },
+      { translateY: bobY.value },
+    ],
   }));
 
   return (
-    <View style={[hintStyles.container, { bottom: bottomInset + 90 }]} pointerEvents="none">
+    <View
+      style={[hintStyles.container, { bottom: bottomInset + 90 }]}
+      pointerEvents="none"
+    >
       <Animated.Text style={[hintStyles.text, textStyle]}>
         Tap here to start!
       </Animated.Text>
@@ -96,7 +128,7 @@ function HandwrittenHint({ bottomInset }: { bottomInset: number }) {
 const hintStyles = StyleSheet.create({
   container: {
     position: "absolute",
-    right: Platform.OS === "web" ? 16 : 21,
+    right: Platform.OS === "web" ? 28 : 21,
     alignItems: "flex-end",
   },
   text: {
@@ -153,16 +185,46 @@ export default function GalleryScreen() {
                       <Stop offset="1" stopColor={Colors.light.pink} />
                     </SvgGradient>
                   </Defs>
-                  <Path stroke={Colors.light.accent} strokeWidth="0.8" strokeLinecap="round" opacity="0.5" d="M-1.5 5.5h-3" />
-                  <Path stroke={Colors.light.accent} strokeWidth="0.8" strokeLinecap="round" opacity="0.4" d="M-2 8h-2.5" />
-                  <Path stroke={Colors.light.accent} strokeWidth="0.8" strokeLinecap="round" opacity="0.3" d="M-1.5 10.5h-2" />
-                  <Path fill="url(#postcardGrad)" d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm6 2.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0m3.5.878c1.482-1.42 4.795 1.392 0 4.622c-4.795-3.23-1.482-6.043 0-4.622M2 5.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5" />
+                  <Path
+                    stroke={Colors.light.accent}
+                    strokeWidth="0.8"
+                    strokeLinecap="round"
+                    opacity="0.5"
+                    d="M-1.5 5.5h-3"
+                  />
+                  <Path
+                    stroke={Colors.light.accent}
+                    strokeWidth="0.8"
+                    strokeLinecap="round"
+                    opacity="0.4"
+                    d="M-2 8h-2.5"
+                  />
+                  <Path
+                    stroke={Colors.light.accent}
+                    strokeWidth="0.8"
+                    strokeLinecap="round"
+                    opacity="0.3"
+                    d="M-1.5 10.5h-2"
+                  />
+                  <Path
+                    fill="url(#postcardGrad)"
+                    d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm6 2.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0m3.5.878c1.482-1.42 4.795 1.392 0 4.622c-4.795-3.23-1.482-6.043 0-4.622M2 5.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5"
+                  />
                 </Svg>
               </View>
               <Text style={styles.brandText}>Postcard Muse</Text>
             </View>
-            <Pressable onPress={handleSettings} hitSlop={12} style={styles.headerIconBtn} testID="settings-button">
-              <Feather name="settings" size={20} color={Colors.light.textSecondary} />
+            <Pressable
+              onPress={handleSettings}
+              hitSlop={12}
+              style={styles.headerIconBtn}
+              testID="settings-button"
+            >
+              <Feather
+                name="settings"
+                size={20}
+                color={Colors.light.textSecondary}
+              />
             </Pressable>
           </View>
         </BlurView>
@@ -171,7 +233,11 @@ export default function GalleryScreen() {
       {postcards.length === 0 && !isLoading ? (
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconContainer}>
-            <Ionicons name="mail-open-outline" size={40} color={Colors.light.textMuted} />
+            <Ionicons
+              name="mail-open-outline"
+              size={40}
+              color={Colors.light.textMuted}
+            />
           </View>
           <Text style={styles.emptyTitle}>No postcards yet</Text>
           <Text style={styles.emptySubtitle}>
@@ -185,7 +251,10 @@ export default function GalleryScreen() {
           keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={[styles.listContent, { paddingBottom: bottomInset + 100 }]}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: bottomInset + 100 },
+          ]}
           showsVerticalScrollIndicator={false}
           onRefresh={refresh}
           refreshing={isLoading}

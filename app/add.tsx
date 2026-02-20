@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,16 @@ import {
   Dimensions,
   ActivityIndicator,
 } from "react-native";
-import Animated from "react-native-reanimated";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withRepeat,
+  withSequence,
+  Easing,
+} from "react-native-reanimated";
+import Svg, { Path } from "react-native-svg";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
@@ -56,6 +65,76 @@ const STATUS_MESSAGES: Record<ProcessingState, string> = {
   done: "Complete!",
   error: "Something went wrong",
 };
+
+function SampleHint() {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(10);
+  const bobY = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withDelay(600, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
+    translateY.value = withDelay(600, withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }));
+    bobY.value = withDelay(1100, withRepeat(
+      withSequence(
+        withTiming(-3, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
+        withTiming(3, { duration: 1400, easing: Easing.inOut(Easing.quad) }),
+      ),
+      -1,
+      true
+    ));
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }, { translateY: bobY.value }],
+  }));
+
+  return (
+    <Animated.View style={[sampleHintStyles.container, animStyle]} pointerEvents="none">
+      <View style={sampleHintStyles.row}>
+        <Svg width={40} height={36} viewBox="0 0 40 36">
+          <Path
+            d="M34 4 C28 5, 18 8, 12 16 C8 22, 6 28, 8 34"
+            stroke={Colors.light.accent}
+            strokeWidth={1.8}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray="4,3"
+          />
+          <Path
+            d="M4 28 L8 35 L13 30"
+            stroke={Colors.light.accent}
+            strokeWidth={2}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+        <Text style={sampleHintStyles.text}>Try a sample!</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+const sampleHintStyles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    left: 12,
+    bottom: 6,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  text: {
+    fontFamily: "Caveat_500Medium",
+    fontSize: 18,
+    color: Colors.light.accent,
+    transform: [{ rotate: "2deg" }],
+    marginBottom: 12,
+  },
+});
 
 export default function AddPostcardScreen() {
   const insets = useSafeAreaInsets();
@@ -509,6 +588,9 @@ export default function AddPostcardScreen() {
           </ScrollView>
         )}
         <View style={styles.bottomBtnRow}>
+          {!frontImage && !backImage && !showSamples && !selectedSample && (
+            <SampleHint />
+          )}
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
