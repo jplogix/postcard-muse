@@ -94,7 +94,7 @@ function SampleHint() {
       <View style={sampleHintStyles.row}>
         <Svg width={40} height={36} viewBox="0 0 40 36">
           <Path
-            d="M34 4 C28 5, 18 8, 12 16 C8 22, 6 28, 8 34"
+            d="M34 4 C28 5, 18 8, 12 16 C8 22, 7 28, 8 33"
             stroke={Colors.light.accent}
             strokeWidth={1.8}
             fill="none"
@@ -102,7 +102,7 @@ function SampleHint() {
             strokeDasharray="4,3"
           />
           <Path
-            d="M4 28 L8 35 L13 30"
+            d="M3 28 L8 34 L13 29"
             stroke={Colors.light.accent}
             strokeWidth={2}
             fill="none"
