@@ -15,13 +15,13 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.postcardmuse",
+      "bundleIdentifier": "com.jplogix.postcardmuse",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.postcardmuse",
+      "package": "com.jplogix.postcardmuse",
       "adaptiveIcon": {
         "backgroundColor": "#FAFAFA",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
