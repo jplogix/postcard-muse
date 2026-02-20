@@ -34,8 +34,10 @@ import LoadingJokes from "@/components/LoadingJokes";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-function resolveUri(uri: string): string {
-  if (uri.startsWith("file://") || uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+function resolveUri(uri: string | null): string {
+  if (!uri) return "";
+  if (uri.startsWith("file://") || uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("data:")) return uri;
+  if (uri.startsWith("/") || uri.startsWith("asset")) return uri;
   try {
     return new URL(uri, getApiUrl()).href;
   } catch {
@@ -67,13 +69,13 @@ export default function DetailScreen() {
         setShowScanAnim(true);
         setScanPhase("scanning");
         AsyncStorage.setItem(key, "1");
-        setTimeout(() => setScanPhase("extracting"), 1200);
-        setTimeout(() => setScanPhase("translating"), 2200);
+        setTimeout(() => setScanPhase("extracting"), 2500);
+        setTimeout(() => setScanPhase("translating"), 4500);
         setTimeout(() => {
           setScanPhase("done");
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          setTimeout(() => setShowScanAnim(false), 600);
-        }, 3200);
+          setTimeout(() => setShowScanAnim(false), 1000);
+        }, 6500);
       }
     });
   }, [isSample, id]);

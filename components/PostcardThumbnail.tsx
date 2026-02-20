@@ -16,7 +16,8 @@ interface PostcardThumbnailProps {
 }
 
 function resolveUri(uri: string): string {
-  if (uri.startsWith("file://") || uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+  if (uri.startsWith("file://") || uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("data:")) return uri;
+  if (uri.startsWith("/") || uri.startsWith("asset")) return uri;
   try {
     return new URL(uri, getApiUrl()).href;
   } catch {
