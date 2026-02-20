@@ -117,18 +117,11 @@ export async function saveSettings(settings: Partial<AppSettings>): Promise<void
   await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...settings }));
 }
 
-const SAMPLES_SEEDED_KEY = "samples_seeded_v2";
+const SAMPLES_SEEDED_KEY = "samples_seeded_v3";
 
 export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
   const seeded = await AsyncStorage.getItem(SAMPLES_SEEDED_KEY);
   if (seeded) return [];
-
-  let baseUrl: string;
-  try {
-    baseUrl = getApiUrl();
-  } catch {
-    return [];
-  }
 
   const existing = await getPostcards();
   const existingIds = new Set(existing.map((p) => p.id));
@@ -138,33 +131,19 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
   for (const sample of samplePostcards) {
     if (existingIds.has(sample.id)) continue;
     if (!sample.originalText && !sample.translatedText) continue;
-
-    let frontUri: string;
-    let backUri: string;
-
-    if (sample.imageOnly) {
-      frontUri = new URL(`/static/${sample.frontImage}`, baseUrl).href;
-      backUri = new URL(`/static/${sample.backImage}`, baseUrl).href;
-    } else {
-      continue;
-    }
-
-    let audioPath: string | undefined;
-    if (sample.audioFile) {
-      audioPath = `/static/${sample.audioFile}`;
-    }
+    if (!sample.imageOnly) continue;
 
     const postcard: Postcard = {
       id: sample.id,
-      frontImageUri: frontUri,
-      backImageUri: backUri,
+      frontImageUri: `/static/samples/${sample.frontImage}`,
+      backImageUri: `/static/samples/${sample.backImage}`,
       originalText: sample.originalText || "",
       translatedText: sample.translatedText || "",
       detectedLanguage: sample.detectedLanguage || "Unknown",
       targetLanguage: "English",
       description: sample.description || "",
       words: sample.words || [],
-      audioPath,
+      audioPath: sample.audioFile ? `/static/samples/${sample.audioFile}` : undefined,
       audioDurationMs: sample.durationMs,
       wordTimings: sample.wordTimings,
       createdAt: Date.now() - newPostcards.length * 1000,

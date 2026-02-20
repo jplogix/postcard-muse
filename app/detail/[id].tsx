@@ -34,6 +34,15 @@ import LoadingJokes from "@/components/LoadingJokes";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+function resolveUri(uri: string): string {
+  if (uri.startsWith("file://") || uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+  try {
+    return new URL(uri, getApiUrl()).href;
+  } catch {
+    return uri;
+  }
+}
+
 export default function DetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -364,7 +373,7 @@ export default function DetailScreen() {
     : "Complete!";
 
   if (showScanAnim) {
-    const scanImage = postcard.backImageUri || postcard.frontImageUri;
+    const scanImage = resolveUri(postcard.backImageUri || postcard.frontImageUri);
     return (
       <View style={[styles.container, { paddingTop: topInset }]}>
         <MeshGradientBackground />
@@ -411,7 +420,7 @@ export default function DetailScreen() {
           front={
             <View style={styles.cardFace}>
               <Image
-                source={{ uri: postcard.frontImageUri }}
+                source={{ uri: resolveUri(postcard.frontImageUri) }}
                 style={StyleSheet.absoluteFill}
                 contentFit="cover"
               />
@@ -422,7 +431,7 @@ export default function DetailScreen() {
               {postcard.backImageUri ? (
                 <>
                   <Image
-                    source={{ uri: postcard.backImageUri }}
+                    source={{ uri: resolveUri(postcard.backImageUri) }}
                     style={StyleSheet.absoluteFill}
                     contentFit="cover"
                   />

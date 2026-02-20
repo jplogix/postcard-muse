@@ -228,8 +228,8 @@ export default function AddPostcardScreen() {
     try {
       if (sample.imageOnly) {
         const baseUrl = getApiUrl();
-        const frontUrl = new URL(`/static/${sample.frontImage}`, baseUrl).href;
-        const backUrl = new URL(`/static/${sample.backImage}`, baseUrl).href;
+        const frontUrl = new URL(`/static/samples/${sample.frontImage}`, baseUrl).href;
+        const backUrl = new URL(`/static/samples/${sample.backImage}`, baseUrl).href;
         setFrontImage({ uri: frontUrl, width: 800, height: 600 });
         setBackImage({ uri: backUrl, width: 800, height: 600 });
       } else {

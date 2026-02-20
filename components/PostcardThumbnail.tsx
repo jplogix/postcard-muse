@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { Postcard } from "@/lib/storage";
+import { getApiUrl } from "@/lib/query-client";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GAP = 12;
@@ -14,16 +15,26 @@ interface PostcardThumbnailProps {
   onPress: () => void;
 }
 
+function resolveUri(uri: string): string {
+  if (uri.startsWith("file://") || uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+  try {
+    return new URL(uri, getApiUrl()).href;
+  } catch {
+    return uri;
+  }
+}
+
 export default function PostcardThumbnail({ postcard, onPress }: PostcardThumbnailProps) {
   const date = new Date(postcard.createdAt);
   const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const imageUri = resolveUri(postcard.frontImageUri);
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.container, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}
     >
-      <Image source={{ uri: postcard.frontImageUri }} style={styles.image} contentFit="cover" transition={200} />
+      <Image source={{ uri: imageUri }} style={styles.image} contentFit="cover" transition={200} />
       <View style={styles.overlay}>
         <View style={styles.langBadge}>
           <Ionicons name="language" size={10} color={Colors.light.accent} />
