@@ -278,6 +278,27 @@ export default function SettingsScreen() {
           </Text>
         </Pressable>
 
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/privacy");
+          }}
+          style={({ pressed }) => [
+            styles.clearButton,
+            pressed && styles.clearButtonPressed,
+            { borderColor: Colors.light.glassBorderCard, backgroundColor: Colors.light.glassCard },
+          ]}
+        >
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={20}
+            color={Colors.light.accent}
+          />
+          <Text style={[styles.clearButtonText, { color: Colors.light.accent }]}>
+            Privacy Policy
+          </Text>
+        </Pressable>
+
         <View style={styles.aboutSection}>
           <Text style={styles.aboutTitle}>About Postcard Muse</Text>
           <Text style={styles.aboutText}>
