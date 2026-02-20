@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Postcard Muse</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #FAFAFA 0%, #F8FAFC 100%);
+      color: #0F172A;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.3;
+      animation: float 20s ease-in-out infinite;
+    }
+
+    .blob-purple {
+      width: 400px;
+      height: 400px;
+      background: rgba(216, 180, 254, 0.4);
+      top: -100px;
+      left: -100px;
+      animation-delay: 0s;
+    }
+
+    .blob-indigo {
+      width: 350px;
+      height: 350px;
+      background: rgba(199, 210, 254, 0.4);
+      top: 50%;
+      right: -100px;
+      animation-delay: -7s;
+    }
+
+    .blob-pink {
+      width: 300px;
+      height: 300px;
+      background: rgba(251, 207, 232, 0.4);
+      bottom: -50px;
+      left: 30%;
+      animation-delay: -14s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -30px) scale(1.05); }
+      66% { transform: translate(-20px, 20px) scale(0.95); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      font-weight: 600;
+      color: #0F172A;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .updated {
+      font-size: 14px;
+      color: #64748B;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .section h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #0F172A;
+      margin-bottom: 12px;
+      letter-spacing: -0.2px;
+    }
+
+    .section h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0F172A;
+      margin-top: 16px;
+      margin-bottom: 6px;
+    }
+
+    .section p {
+      font-size: 14px;
+      color: #64748B;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .section ul {
+      margin: 8px 0 8px 20px;
+    }
+
+    .section li {
+      font-size: 14px;
+      color: #64748B;
+      line-height: 1.6;
+      margin-bottom: 4px;
+    }
+
+    .last-updated {
+      text-align: center;
+      font-size: 11px;
+      color: #94A3B8;
+      margin-top: 32px;
+    }
+
+    a {
+      color: #4F46E5;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 20px 16px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .section {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="background">
+    <div class="blob blob-purple"></div>
+    <div class="blob blob-indigo"></div>
+    <div class="blob blob-pink"></div>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last Updated: February 20, 2026</p>
+    </div>
+
+    <div class="section">
+      <h2>Introduction</h2>
+      <p>Postcard Muse ("we," "our," or "us") respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our mobile application.</p>
+    </div>
+
+    <div class="section">
+      <h2>Information We Collect</h2>
+
+      <h3>Postcard Images</h3>
+      <p>When you use the app, you may photograph postcards (front and back). These images are stored locally on your device and are not transmitted to our servers unless you explicitly choose to use AI processing features.</p>
+
+      <h3>AI Processing Data</h3>
+      <p>To provide text extraction, translation, and text-to-speech features, postcard images are temporarily sent to:</p>
+      <ul>
+        <li>Google Gemini API (for text extraction and translation)</li>
+        <li>ElevenLabs API (for text-to-speech generation)</li>
+      </ul>
+      <p>These third-party services process your data according to their own privacy policies. We do not store your images or processed text on our servers.</p>
+
+      <h3>User Preferences</h3>
+      <p>We store your app preferences locally on your device, including:</p>
+      <ul>
+        <li>Target language for translations</li>
+        <li>Background music settings</li>
+        <li>Address exclusion preferences</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>How We Use Your Data</h2>
+      <p>Your data is used exclusively for:</p>
+      <ul>
+        <li>Extracting handwritten text from postcard images</li>
+        <li>Detecting the language of the message</li>
+        <li>Translating text to your preferred language</li>
+        <li>Generating audio playback of the message</li>
+        <li>Storing your postcard collection locally on your device</li>
+      </ul>
+      <p>We do not sell, rent, or share your data with third parties for marketing purposes.</p>
+    </div>
+
+    <div class="section">
+      <h2>Data Storage & Retention</h2>
+      <p>All postcard images, extracted text, translations, and audio files are stored locally on your device. You retain full control over your data and can delete individual postcards or clear your entire collection at any time through the Settings screen.</p>
+      <p>Generated audio files are temporarily cached on our server for 24 hours to improve performance, then automatically deleted.</p>
+    </div>
+
+    <div class="section">
+      <h2>Third-Party Services</h2>
+
+      <h3>Google Gemini</h3>
+      <p>We use Google Gemini to analyze postcard images and extract text. Google may process image data according to their <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a>.</p>
+
+      <h3>ElevenLabs</h3>
+      <p>We use ElevenLabs to generate text-to-speech audio. Your translated text is sent to ElevenLabs for audio generation. See their <a href="https://elevenlabs.io/privacy-policy" target="_blank" rel="noopener">ElevenLabs Privacy Policy</a> for details.</p>
+    </div>
+
+    <div class="section">
+      <h2>Data Security</h2>
+      <p>While we strive to protect your data, no method of transmission over the internet is 100% secure. We use industry-standard encryption for data in transit and implement reasonable security measures to protect your information.</p>
+    </div>
+
+    <div class="section">
+      <h2>Children's Privacy</h2>
+      <p>Our service is not intended for children under 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us.</p>
+    </div>
+
+    <div class="section">
+      <h2>Your Rights</h2>
+      <p>You have the right to:</p>
+      <ul>
+        <li>Access all postcards stored on your device</li>
+        <li>Delete individual postcards or your entire collection</li>
+        <li>Modify your app preferences at any time</li>
+        <li>Stop using the app without consequence</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Changes to This Policy</h2>
+      <p>We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last Updated" date.</p>
+    </div>
+
+    <div class="section">
+      <h2>Contact Us</h2>
+      <p>If you have questions about this Privacy Policy or how we handle your data, please contact us through the app or via our website.</p>
+      <p class="last-updated">Postcard Muse Version 1.0.0</p>
+    </div>
+  </div>
+</body>
+</html>
