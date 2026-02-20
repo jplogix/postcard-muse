@@ -173,6 +173,21 @@ export default function DetailScreen() {
     };
   }, [stopSync, bgmPlayer]);
 
+  const pendingPlayRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingPlayRef.current && audioSource && !status.playing) {
+      try {
+        player.play();
+        if (backgroundMusic && bgmPlayer) {
+          bgmPlayer.seekTo(0);
+          bgmPlayer.play();
+        }
+        pendingPlayRef.current = false;
+      } catch {}
+    }
+  }, [audioSource, player, status.playing, backgroundMusic, bgmPlayer]);
+
   useEffect(() => {
     if (isPlaying && status.playing && seekingRef.current) {
       seekingRef.current = false;
@@ -306,6 +321,7 @@ export default function DetailScreen() {
           }
         }, 100);
       } else {
+        pendingPlayRef.current = true;
         setAudioSource(fullAudioUrl);
       }
 
