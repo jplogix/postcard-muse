@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
+import { execSync } from "node:child_process";
 import { GoogleGenAI } from "@google/genai";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import sharp from "sharp";
@@ -203,6 +204,39 @@ async function generateElevenLabsTTS(text: string, outPath: string): Promise<TTS
   return { durationMs, wordTimings };
 }
 
+const PIPER_MODEL = path.join(__dirname, "voices", "en_GB-alba-medium.onnx");
+
+function estimateWavDurationMs(filePath: string): number {
+  const buf = fs.readFileSync(filePath);
+  if (buf.length < 44) return 0;
+  const dataSize = buf.readUInt32LE(40);
+  const sampleRate = buf.readUInt32LE(24);
+  const bitsPerSample = buf.readUInt16LE(34);
+  const channels = buf.readUInt16LE(22);
+  const bytesPerSample = (bitsPerSample / 8) * channels;
+  return Math.round((dataSize / bytesPerSample / sampleRate) * 1000);
+}
+
+async function generatePiperTTS(text: string, outPath: string): Promise<TTSResult> {
+  const wavPath = outPath.replace(/\.mp3$/, ".wav");
+  try {
+    execSync(
+      `echo ${JSON.stringify(text)} | piper --model "${PIPER_MODEL}" --output_file "${wavPath}" --sentence_silence 0.3 --quiet`,
+      { timeout: 30000 }
+    );
+
+    const durationMs = estimateWavDurationMs(wavPath);
+    fs.copyFileSync(wavPath, outPath);
+
+    const alignPath = outPath.replace(/\.mp3$/, ".json");
+    fs.writeFileSync(alignPath, JSON.stringify({ durationMs, wordTimings: [], engine: "piper" }));
+
+    return { durationMs, wordTimings: [] };
+  } finally {
+    try { if (fs.existsSync(wavPath)) fs.unlinkSync(wavPath); } catch {}
+  }
+}
+
 function computeHomography(
   src: [number, number][],
   dst: [number, number][]
@@ -276,9 +310,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         durationMs = cached.durationMs;
         wordTimings = cached.wordTimings || [];
       } else {
-        const result = await generateElevenLabsTTS(text, mp3Path);
-        durationMs = result.durationMs;
-        wordTimings = result.wordTimings;
+        try {
+          const result = await generateElevenLabsTTS(text, mp3Path);
+          durationMs = result.durationMs;
+          wordTimings = result.wordTimings;
+        } catch (elevenLabsErr: any) {
+          console.warn("ElevenLabs TTS failed, falling back to Piper:", elevenLabsErr?.message);
+          const result = await generatePiperTTS(text, mp3Path);
+          durationMs = result.durationMs;
+          wordTimings = result.wordTimings;
+        }
       }
 
       if (wordTimings.length === 0 && words?.length) {
@@ -303,7 +344,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!fs.existsSync(mp3Path)) {
       return res.status(404).json({ error: "Audio not found" });
     }
-    res.setHeader("Content-Type", "audio/mpeg");
+    const buf = fs.readFileSync(mp3Path, { encoding: null });
+    const isWav = buf.length >= 4 && buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46;
+    res.setHeader("Content-Type", isWav ? "audio/wav" : "audio/mpeg");
     res.setHeader("Cache-Control", "public, max-age=3600");
     res.sendFile(mp3Path);
   });
