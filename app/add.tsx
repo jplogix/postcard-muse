@@ -33,7 +33,7 @@ import { Asset } from "expo-asset";
 import Colors from "@/constants/colors";
 import { usePostcards } from "@/lib/PostcardContext";
 import { saveImagePermanently, imageToBase64, Postcard } from "@/lib/storage";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 import ScanningAnimation from "@/components/ScanningAnimation";
 import LoadingJokes from "@/components/LoadingJokes";
 import MeshGradientBackground from "@/components/MeshGradientBackground";
@@ -226,14 +226,22 @@ export default function AddPostcardScreen() {
     setLoadingSample(true);
 
     try {
-      const [frontAsset, backAsset] = await Promise.all([
-        Asset.fromModule(sample.frontImage).downloadAsync(),
-        Asset.fromModule(sample.backImage).downloadAsync(),
-      ]);
-      const frontUri = frontAsset.localUri || frontAsset.uri;
-      const backUri = backAsset.localUri || backAsset.uri;
-      setFrontImage({ uri: frontUri, width: 1600, height: 1000 });
-      setBackImage({ uri: backUri, width: 1600, height: 1000 });
+      if (sample.imageOnly) {
+        const baseUrl = getApiUrl();
+        const frontUrl = new URL(`/static/${sample.frontImage}`, baseUrl).href;
+        const backUrl = new URL(`/static/${sample.backImage}`, baseUrl).href;
+        setFrontImage({ uri: frontUrl, width: 800, height: 600 });
+        setBackImage({ uri: backUrl, width: 800, height: 600 });
+      } else {
+        const [frontAsset, backAsset] = await Promise.all([
+          Asset.fromModule(sample.frontImage).downloadAsync(),
+          Asset.fromModule(sample.backImage).downloadAsync(),
+        ]);
+        const frontUri = frontAsset.localUri || frontAsset.uri;
+        const backUri = backAsset.localUri || backAsset.uri;
+        setFrontImage({ uri: frontUri, width: 1600, height: 1000 });
+        setBackImage({ uri: backUri, width: 1600, height: 1000 });
+      }
     } catch (err) {
       console.error("Failed to load sample images:", err);
       setSelectedSample(null);
@@ -273,12 +281,12 @@ export default function AddPostcardScreen() {
         id: Crypto.randomUUID(),
         frontImageUri: savedFront,
         backImageUri: savedBack,
-        originalText: sample.originalText,
-        translatedText: sample.translatedText,
-        detectedLanguage: sample.detectedLanguage,
+        originalText: sample.originalText || "",
+        translatedText: sample.translatedText || "",
+        detectedLanguage: sample.detectedLanguage || "Unknown",
         targetLanguage: "English",
-        description: sample.description,
-        words: sample.words,
+        description: sample.description || "",
+        words: sample.words || [],
         audioPath: audioUri,
         audioDurationMs: sample.durationMs,
         wordTimings: sample.wordTimings,
@@ -583,7 +591,7 @@ export default function AddPostcardScreen() {
                 ]}
               >
                 <Image
-                  source={sample.frontImage}
+                  source={sample.imageOnly ? { uri: new URL(`/static/${sample.frontImage}`, getApiUrl()).href } : sample.frontImage}
                   style={styles.sampleImage}
                   contentFit="cover"
                 />
