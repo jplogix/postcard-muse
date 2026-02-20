@@ -6,7 +6,14 @@ Postcard Muse is a mobile application that serves as a digital gallery for physi
 
 The project is a full-stack Expo + Express application. The Expo frontend handles the mobile UI and local data persistence, while the Express backend proxies AI requests to Google Gemini for postcard processing.
 
-## Recent Changes (Feb 19, 2026)
+## Recent Changes (Feb 20, 2026)
+
+- Fixed sample seeding: tracks deleted sample IDs so re-seeding never re-adds user-deleted samples
+- Sample audio now uses bundled require() assets directly via samplePostcards lookup, bypassing stale stored URIs
+- Scanning animation slowed to ~11s total (scanning 3.5s, extracting 3s, translating 3s, done+fade 1.5s)
+- Added Christmas card snowman image and Dresden Letter Fraktur text as proper front previews
+
+## Previous Changes (Feb 19, 2026)
 
 - Added pre-packaged sample postcards (Paris/French, Tokyo/Japanese, Santorini/German) for demo without physical postcards
 - Sample images stored in `assets/samples/`, data module in `lib/samplePostcards.ts`

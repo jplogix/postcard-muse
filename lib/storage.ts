@@ -92,6 +92,23 @@ function isLocalFileUri(uri: string): boolean {
   return uri.startsWith("file://") || uri.startsWith("/");
 }
 
+const DELETED_SAMPLES_KEY = "deleted_sample_ids";
+
+async function trackDeletedSample(id: string): Promise<void> {
+  if (!id.startsWith("sample-")) return;
+  const data = await AsyncStorage.getItem(DELETED_SAMPLES_KEY);
+  const deleted: string[] = data ? JSON.parse(data) : [];
+  if (!deleted.includes(id)) {
+    deleted.push(id);
+    await AsyncStorage.setItem(DELETED_SAMPLES_KEY, JSON.stringify(deleted));
+  }
+}
+
+async function getDeletedSampleIds(): Promise<Set<string>> {
+  const data = await AsyncStorage.getItem(DELETED_SAMPLES_KEY);
+  return new Set(data ? JSON.parse(data) : []);
+}
+
 export async function deletePostcard(id: string): Promise<void> {
   const postcards = await getPostcards();
   const card = postcards.find((p) => p.id === id);
@@ -107,6 +124,7 @@ export async function deletePostcard(id: string): Promise<void> {
       }
     } catch {}
   }
+  await trackDeletedSample(id);
   const filtered = postcards.filter((p) => p.id !== id);
   await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(filtered));
 }
@@ -146,14 +164,14 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
   if (seeded) return [];
 
   const existing = await getPostcards();
-  const sampleIds = new Set(samplePostcards.map((s) => s.id));
-  const nonSamples = existing.filter((p) => !sampleIds.has(p.id));
-  const existingIds = new Set<string>();
+  const existingIds = new Set(existing.map((p) => p.id));
+  const deletedIds = await getDeletedSampleIds();
 
   const newPostcards: Postcard[] = [];
 
   for (const sample of samplePostcards) {
     if (existingIds.has(sample.id)) continue;
+    if (deletedIds.has(sample.id)) continue;
     if (!sample.originalText && !sample.translatedText) continue;
 
     try {
@@ -191,12 +209,12 @@ export async function seedSamplesIfNeeded(): Promise<Postcard[]> {
   }
 
   if (newPostcards.length > 0) {
-    const all = [...newPostcards, ...nonSamples];
+    const all = [...existing, ...newPostcards];
     await AsyncStorage.setItem(POSTCARDS_KEY, JSON.stringify(all));
   }
 
-  for (const sample of samplePostcards) {
-    await AsyncStorage.removeItem(`sample_scanned_${sample.id}`);
+  for (const pc of newPostcards) {
+    await AsyncStorage.removeItem(`sample_scanned_${pc.id}`);
   }
 
   await AsyncStorage.setItem(SAMPLES_SEEDED_KEY, "true");
